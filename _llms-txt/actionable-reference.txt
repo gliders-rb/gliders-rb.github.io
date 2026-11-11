@@ -1,0 +1,1449 @@
+<SYSTEM>actionable reference: Every public rule of actionable-rb.</SYSTEM>
+
+# Actions and steps
+
+> How to declare an action, run it, and build it from method steps, case steps and nested actions.
+
+An action subclasses `Actionable::Action`, and each of its steps is an instance method (public or private). Every `.run` creates a new instance, so nothing carries over between calls. Here we cover how to declare steps and how to run them. The verbs that end a run live on [Control flow](/reference/actionable/control-flow/), and the object `.run` hands back is on [Results](/reference/actionable/results/). ## `.run` [Section titled “.run”](#run) 
+```ruby
+Action.run(*args, **kwargs) # => Result
+```
+ When the class has an `input` block, `.run(**kwargs)` builds the input struct and the steps read it as `input` (see [Input and output](/reference/actionable/input-and-output/)). Without the block the action is free-form, so `.run` forwards `*args` and `**kwargs` to `new` and the default constructor discards them. You always get exactly one result back, and a run that records no outcome succeeds on its own (AC §5.4). 
+```ruby
+class StampPass < Actionable::Action
+  input { required :pass_no, :string }
+  output { required :stamped_no, :string }
+
+
+  step :stamp
+
+
+  private
+
+
+  def stamp
+    @stamped_no = input.pass_no.delete('/')
+  end
+end
+
+
+StampPass.run(pass_no: 'BP/204/7').stamped_no # => "BP2047"
+StampPass.steps.map(&:name)                   # => [:stamp]
+StampPass.run.code                            # => :invalid_input
+```
+ A free-form action that wants its own arguments overrides `initialize` and calls `super()`: 
+```ruby
+class Hail < Actionable::Action
+  def initialize(vessel)
+    super()
+    @vessel = vessel
+  end
+
+
+  step :hail
+
+
+  private
+
+
+  def hail = succeed("ahoy #{@vessel}")
+end
+
+
+Hail.run('Gannet').message        # => "ahoy Gannet"
+Actionable::Action.run.success?   # => true
+```
+ Caution When an action has an `input` block, the gem calls `new` with no arguments and assigns the input afterwards. An `initialize` override has to work with zero required arguments and call `super`, or `.run` raises Ruby’s `ArgumentError` (AC §5.6). ## `step` [Section titled “step”](#step) 
+```ruby
+step(target, **options)
+```
+ | Target | Kind | Meaning | | -------------------- | --------- | ----------------------------------------------------------------- | | Symbol or String | `:method` | call the instance method of that name | | an `Action` subclass | `:action` | run that action as a step (see [nested actions](#nested-actions)) | | Option | Applies to | Meaning | | --------- | ------------ | ------------------------------------------------ | | `if:` | all steps | run only when the guard is truthy | | `unless:` | all steps | skip when the guard is truthy | | `input:` | action steps | names of instance variables to pass to the child | | `expose:` | action steps | narrow the child’s output fields copied back | Steps execute in the order declared, and `step 'name'` is the same step as `step :name`. Any other kind of target (`step 5`) raises `ArgumentError` with `unsupported step target`. A step object answers `name`, `kind` and `options`, and two steps are equal when their class and name match. `Action.steps` lists them in order (AC §5.3). ### Guards [Section titled “Guards”](#guards) `if:` and `unless:` accept a method name or a callable that gets the instance. If both are present, whichever one asks to skip wins. A step that is skipped this way never runs and leaves no entry in the history. Guard methods can be private, but the missing-method check ignores them, so a misspelled guard raises `NoMethodError` only when it is evaluated, partway through a run (AC-B#guards). 
+```ruby
+class ClearDeparture < Actionable::Action
+  input { required :vessel, :string }
+
+
+  step :inspect_hull
+  step :scrub_ballast, if: :ballast_dirty?
+  step :ring_bell, unless: ->(action) { action.input.vessel.length < 5 }
+  step :cast_off
+
+
+  def initialize
+    super
+    @trail = []
+  end
+
+
+  private
+
+
+  def ballast_dirty? = false
+  def inspect_hull = @trail << :inspect_hull
+  def scrub_ballast = @trail << :scrub_ballast
+  def ring_bell = @trail << :ring_bell
+  def cast_off = succeed(@trail.join(','))
+end
+
+
+ClearDeparture.run(vessel: 'Heron II').message  # => "inspect_hull,ring_bell"
+ClearDeparture.run(vessel: 'Tern').message      # => "inspect_hull"
+ClearDeparture.steps.to_a[1].options            # => {if: :ballast_dirty?}
+```
+ ### Redeclaration and inheritance [Section titled “Redeclaration and inheritance”](#redeclaration-and-inheritance) Declare a step a second time (same kind, same name) and its options are replaced where it stands, so it keeps its first position. `step :x` and `case_step :x` count as different steps, and so do `on_success :x` and `always :x`, since every hook list is separate. A subclass takes a copy of the steps, hooks, schemas, declarations, `measure` and `typed_outcomes` at creation time (AC-I6). The parent can change afterwards without affecting it, and redeclaring a step in the subclass touches the subclass only. An inherited step can’t be removed, so switch it off with `if:` or `unless:`. 
+```ruby
+class BaseDeparture < Actionable::Action
+  step :load_deck
+  step :sound_horn
+
+
+  private
+
+
+  def load_deck = nil
+  def sound_horn = nil
+end
+
+
+class SilentDeparture < BaseDeparture
+  step :sound_horn, unless: ->(_action) { true }
+end
+
+
+BaseDeparture.steps.map(&:options)  # => [{}, {}]
+SilentDeparture.steps.map(&:name)   # => [:load_deck, :sound_horn]
+SilentDeparture.steps.to_a.last.options.keys # => [:unless]
+SilentDeparture.steps.equal?(BaseDeparture.steps) # => false
+```
+ ## `case_step` [Section titled “case_step”](#case_step) 
+```ruby
+case_step(value_method, **options) { on(match, target, **opts); default(target, **opts) }
+```
+ A case step calls the named method (private works), then runs the first branch whose match accepts the returned value. The target is either a method name or an action class, and `default` takes whatever is left. | Match | Accepts | | -------- | ---------------------------- | | a value | values equal to it (`==`) | | an Array | any value the Array includes | | a Regexp | values whose `to_s` matches | `Actionable::ValueMatch.matches?(branch_value, value)` is the matcher everything shares. A Range never matches one of its members since it is compared with `==` only, so spell it `(400..499).to_a` rather than `400..499`. A `nil` branch matches `nil` (AC-B#valuematch). 
+```ruby
+class AssignQuay < Actionable::Action
+  input { required :cargo, :string }
+
+
+  case_step :cargo do
+    on 'foot', :use_gangway
+    on %w[car van], :use_ramp
+    on(/\Acrane/, :use_hoist)
+    default :use_tender
+  end
+
+
+  private
+
+
+  def cargo = input.cargo
+  def use_gangway = succeed('gangway')
+  def use_ramp = succeed('ramp')
+  def use_hoist = succeed('hoist')
+  def use_tender = succeed('tender')
+end
+
+
+AssignQuay.run(cargo: 'van').message        # => "ramp"
+AssignQuay.run(cargo: 'crane-lift').message # => "hoist"
+AssignQuay.run(cargo: 'livestock').message  # => "tender"
+AssignQuay.steps.first.kind                 # => :case
+Actionable::ValueMatch.matches?((400..499), 450) # => false
+Actionable::ValueMatch.matches?((400..499).to_a, 450) # => true
+```
+ When nothing matches and there is no `default`, the step does nothing and no error is raised. Branches accept `if:` and `unless:` just like steps do. The value alone picks the branch, and only then does its guard decide whether the target runs. If the matched branch’s guard opts out, nothing happens and a later branch is not tried. `case_step` is built on `Steps::Case.define(value_source, **options)`, and the resulting step answers `branches` (`[match_value, step]` pairs) and `default_step`. ## Nested actions [Section titled “Nested actions”](#nested-actions) 
+```ruby
+step ChildAction, input: %i[berth], expose: %i[pass]
+```
+ A nested action amounts to `Child.run(berth: @berth)`. For each name listed in `input:`, the parent hands over its instance variable of that name as a keyword, and an unset variable goes in as `nil`. After a success or a skip, the fields the child really set come back to the parent as instance variables, limited by `expose:`. A field the child never set can’t overwrite what the parent holds (AC-B#nestedabsorb). 
+```ruby
+class HoldBerth < Actionable::Action
+  input { required :berth, :string }
+  output { required :held, :boolean }
+
+
+  step :hold
+
+
+  private
+
+
+  def hold = @held = true
+end
+
+
+class IssueBoarding < Actionable::Action
+  step HoldBerth, input: %i[berth], expose: %i[held]
+  step :finish
+
+
+  def initialize
+    super
+    @berth = 'D2-17'
+    @deck = 'upper'
+  end
+
+
+  private
+
+
+  def finish = succeed("held=#{@held} deck=#{@deck}")
+end
+
+
+IssueBoarding.run.message # => "held=true deck=upper"
+IssueBoarding.steps.first.kind # => :action
+```
+ When the child fails, the parent fails too and stops. It takes over the child’s code, message, errors and metadata directly, never passing through its own `fail`. A parent that declares any failure code has to declare every non-gem code its children can fail with, otherwise `DefinitionError` is raised, while the gem’s own `:invalid_input` and `:invalid_output` pass through freely (AC §5.8, AC-B#nesteddeclare). A child’s skip doesn’t count as an outcome for the parent, which carries on as it would after a success. If the parent measures, the child’s history is attached to the matching step record (see [Hooks and history](/reference/actionable/hooks-and-history/)). ## Checks before and during a run [Section titled “Checks before and during a run”](#checks-before-and-during-a-run) `.run` goes through these stages in order: build and validate the input (invalid input returns its failure right there), instantiate, check for missing methods, check verb positions on the first run, then run the steps (AC-B#runorder). * **Missing methods.** Each step, hook and case-branch method has to exist on the instance, public or private, and can’t come from `Kernel`, `Object` or `BasicObject`, so `step :puts` fails. The error is a `DefinitionError`: `<Action> declares step(s) calling :a, :b but does not implement them`. A step whose guard would skip it is still checked. * **Verb position.** The first run of a class raises `DefinitionError` when a plain verb has more code after it. [Errors and guardrails](/reference/actionable/errors/) has the details. ## See also [Section titled “See also”](#see-also) * [Control flow](/reference/actionable/control-flow/): the verbs a step calls * [Hooks and history](/reference/actionable/hooks-and-history/): what runs after the steps * [Declared outcomes](/reference/actionable/declared-outcomes/): codes a nested child may fail with
+
+# Batches and introspection
+
+> Run an action over many items with run_each, look actions up in the registry, and describe an action as data or text.
+
+Three tools here treat actions as data. `run_each` feeds many inputs to one action, `Actionable.registry` finds an action by name, and `describe` reads an action’s shape without running it. ## `run_each` [Section titled “run_each”](#run_each) 
+```ruby
+Action.run_each(items) { |item| args } # => BatchResult
+```
+ The action runs once per item, in order, and each run is independent of the others. You get back a `BatchResult` that keeps the same order. The block turns an item into run arguments: a Hash becomes keywords, an Array becomes positional arguments, and anything else is one positional argument. With no block, items follow that same rule. One item failing never affects another, and nothing wraps the whole batch in a transaction (AC-B#runeach). 
+```ruby
+class TrimLoad < Actionable::Action
+  input { required :cars, :integer }
+  output { required :axles, :integer }
+  fails :uneven
+
+
+  step :weigh
+
+
+  private
+
+
+  def weigh
+    fail!(:uneven) if input.cars.odd?
+    @axles = input.cars * 3
+  end
+end
+
+
+batch = TrimLoad.run_each([5, 6, 7, 8]) { |cars| { cars: cars } }
+batch.size                     # => 4
+batch.all_ok?                  # => false
+batch.any_failure?             # => true
+batch.partial?                 # => true
+batch.successes.map(&:axles)   # => [18, 24]
+batch.failures.size            # => 2
+batch.skips.size              # => 0
+batch[0].code                  # => :uneven
+batch[7]                       # => nil
+batch.map(&:status)            # => [:failure, :success, :failure, :success]
+batch.to_api_h(id_field: :axles).first # => {index: 0, status: :failure, id: nil, errors: {}}
+```
+ ### `BatchResult` [Section titled “BatchResult”](#batchresult) `BatchResult` includes Enumerable over its results, and `each` with no block gives you an enumerator. | Method | Returns | | -------------------------------- | ------------------------------------------------------------------------- | | `[]` | the result at an index, `nil` out of range | | `size`, `length`, `results` | the count, and the results | | `empty?` | true with no results | | `all_ok?` | true when every result is `ok?` (vacuously true when empty) | | `any_failure?` | true when any result is a failure | | `partial?` | `any_failure?` and at least one ok result; false when empty or all failed | | `successes`, `failures`, `skips` | results selected by outcome | | `to_api_h(id_field: :id)` | `result.to_api_h(index: i, id_field:)` for each result, in order | ## The registry [Section titled “The registry”](#the-registry) `Actionable.registry` is one `Registry` per process. A named subclass lands in it the moment it is created. `Registry#register` overwrites whatever class already holds the name, skips anonymous classes, and returns the registry. Registration happens at subclass creation, so a `Class.new(Action)` you name later never gets in. Entries are never removed, and the registry takes no lock. | Method | Returns | | ---------------------------------- | -------------------------------------------------------- | | `[]` | the class for a String or Symbol name, `nil` if unknown | | `keys`, `values`, `size`, `empty?` | the usual | | `each` | yields `(name, class)`, or an enumerator without a block | | `register(klass)` | the registry | 
+```ruby
+class Pilotage < Actionable::Action; end
+
+
+registry = Actionable.registry
+registry[:Pilotage]               # => Pilotage
+registry['Pilotage']              # => Pilotage
+registry['Unmoored']              # => nil
+registry.keys.include?('Pilotage') # => true
+registry.values.include?(Pilotage) # => true
+registry.empty?                   # => false
+registry.register(Class.new(Actionable::Action)).equal?(registry) # => true
+registry.each.first.class         # => Array
+```
+ ## `describe` [Section titled “describe”](#describe) 
+```ruby
+Action.describe # => Hash
+```
+ The Hash `describe` returns has exactly nine keys. | Key | Value | | ------------------- | ---------------------------------------------------------------------------------------------------------------- | | `name` | the class name, or `nil` when anonymous | | `input` | the input schema’s `metadata.to_h`; `{discriminated_on:, shapes:}` for a dispatched action; `nil` when free-form | | `output` | the output schema’s `metadata.to_h`, or `nil` | | `steps` | `[{type:, name:, options:}]`; `type` is `:method`, `:action` or `:case`; an action step’s `name` is the class | | `failures`, `skips` | `{code => {message:, metadata:}}`, plus `output:` when the code has a schema | | `hooks` | `{on_success:, on_failure:, on_skip:, always:}` as name lists | | `measure` | the mode Symbol | | `transactional` | the transaction config, or `nil` | On a dispatched action, `shapes` lists the values each branch matches on, not the schema classes the name might suggest. Load the Rails adapter and `hooks` also carries an `after_commit` key, there even when empty. 
+```ruby
+class Sounding < Actionable::Action
+  input { required :berth, :string }
+  fails :aground, 'keel touched bottom', retry: true
+  skips :slack
+  step :lower_line
+  always :coil_line
+
+
+  private
+
+
+  def lower_line = nil
+  def coil_line = nil
+end
+
+
+description = Sounding.describe
+description.keys.size                # => 9
+description[:name]                   # => "Sounding"
+description[:steps]                  # => [{type: :method, name: :lower_line, options: {}}]
+description[:hooks][:always]         # => [:coil_line]
+description[:failures]               # => {aground: {message: "keel touched bottom", metadata: {retry: true}}}
+description[:input].keys             # => [:berth]
+description[:output]                 # => nil
+description[:measure]                # => :none
+description[:transactional]          # => nil
+```
+ ## `describe_text` [Section titled “describe_text”](#describe_text) `describe_text` prints those same facts as a multi-line String, with no trailing newline: 1. `<name or "action"> (measure: <mode>)`, with `, transactional` after the mode when a transaction config exists. 2. `Input:` followed by `(free-form)`, or `(discriminated on <name>: <variants>)`, or the schema’s field lines indented two extra spaces. 3. `Output:` the same way. 4. `Steps:` and one `- <name> (<kind>)` line per step, or `(none)`. 5. `Failures:` and `Skips:`, only when non-empty, one `- <code>` line each, with the metadata in parentheses and `: <message>` when there is one. 6. `Hooks:`, only when some list is non-empty, one `<section>: <names>` line per non-empty section. The field lines are FieldStruct’s own description, so they change with its version. 
+```ruby
+lines = Sounding.describe_text.lines.map(&:chomp)
+lines.first                    # => "Sounding (measure: none)"
+lines.include?('  Steps:')     # => true
+lines.include?('    - lower_line (method)') # => true
+lines.include?('    - aground (retry: true): keel touched bottom') # => true
+lines.last                     # => "    always: coil_line"
+```
+ ## See also [Section titled “See also”](#see-also) * [Results](/reference/actionable/results/): `to_api_h` and the result shape * [Declared outcomes](/reference/actionable/declared-outcomes/): what `failures` and `skips` list * [Introspection and tooling](/reference/field-struct/introspection-and-tooling/): `metadata.to_h` for the schemas
+
+# Control flow
+
+> The verbs a step uses to end a run, how halting works, the rules for codes, and where a plain verb may go.
+
+Steps close a run by recording an outcome through a verb. A plain verb records and lets the run continue, and a bang verb records and stops the main steps. Stopping is done with a `throw` and never with an exception (AC-I1), while a real exception from a step goes straight through `.run` (AC-I2). The verbs are all private, and `result` and `input` are the public readers. ## The verbs [Section titled “The verbs”](#the-verbs) | Verb | Records | Returns | | -------------------------------------------------------------- | ------------------------------ | ------------- | | `succeed(message = nil, **output)` | `Success` | `true` | | `fail(code, message = nil, **errors)` | `Failure` | `false` | | `skip(code = :skipped, message = nil, **output)` | `Skipped` | `false` | | `fail_with(source, code: :invalid, message: nil, output: nil)` | `Failure` with `source.errors` | `false` | | `succeed!`, `fail!`, `skip!`, `fail_with!` | the same, then `halt!` | never returns | | `halt!` | nothing | never returns | Whichever record comes last wins (AC-I4). If nothing was recorded, the run succeeds by itself with code `:success`. Hooks still fire after a halt (see [Hooks and history](/reference/actionable/hooks-and-history/)). 
+```ruby
+class Refloat < Actionable::Action
+  step :strand
+  step :tow
+
+
+  private
+
+
+  def strand = fail(:adrift)
+  def tow = succeed('refloated')
+end
+
+
+Refloat.run.success? # => true
+Refloat.run.message  # => "refloated"
+```
+ ## `succeed` and `skip` [Section titled “succeed and skip”](#succeed-and-skip) Whatever keywords follow the message are output. With an `output` schema they survive only when they match its fields, and they override instance variables of the same name (see [Input and output](/reference/actionable/input-and-output/)). With no output schema, the keywords turn into the output Hash untouched. 
+```ruby
+class LogCrossing < Actionable::Action
+  step :record
+
+
+  private
+
+
+  def record = succeed('logged', passengers: 41)
+end
+
+
+LogCrossing.run.output # => {passengers: 41}
+```
+ `skip` accepts a code and defaults to `:skipped`. It isn’t a failure, and `ok?` is true for it (AC-I3). 
+```ruby
+class RefuelTender < Actionable::Action
+  step :refuel
+
+
+  private
+
+
+  def refuel = skip!(:tank_full, 'no fuel needed')
+end
+
+
+RefuelTender.run.skipped? # => true
+RefuelTender.run.code     # => :tank_full
+RefuelTender.run.ok?      # => true
+```
+ ## `fail` [Section titled “fail”](#fail) Each keyword after the message is an error, written `field => message` or `field => [messages]`. No keyword is held back for metadata, so `fail!(:x, nil, kind: 'is not valid')` produces `errors[:kind]`. Values become Strings, element by element for an Array. 
+```ruby
+class DenyBoarding < Actionable::Action
+  step :check
+
+
+  private
+
+
+  def check = fail!(:denied, 'cannot board', pass: ['is expired', 'is unsigned'])
+end
+
+
+result = DenyBoarding.run
+result.errors.to_h # => {pass: ["is expired", "is unsigned"]}
+result.message     # => "cannot board"
+```
+ In an action, `fail` records a failure and is not `Kernel#fail`. To raise an exception, call `raise`. ### Codes [Section titled “Codes”](#codes) Codes have to be identifiers, matching `/\A[[:alpha:]_][[:alnum:]_]*[?!]?\z/`. Passing a sentence raises `ArgumentError` at the call. `fail 'berth unavailable'` is a `Kernel#fail` habit, and storing it as a code would bury the mistake. A String code is converted to a Symbol (AC §5.2). 
+```ruby
+class Phrase < Actionable::Action
+  step :check
+
+
+  private
+
+
+  def check = fail('berth unavailable')
+end
+
+
+begin
+  Phrase.run
+rescue ArgumentError => e
+  e.class # => ArgumentError
+end
+```
+ After an action declares failure codes or skip codes, it can only end with declared ones. [Declared outcomes](/reference/actionable/declared-outcomes/) has the rules. ## `fail_with` [Section titled “fail_with”](#fail_with) `fail_with(source, code: :invalid, message: nil, output: nil)` takes `source.errors` from any object whose errors answer `to_h`, usually a FieldStruct, and so turns the validation of a side struct into a failure. The default code is `:invalid`, so an action that declares failures must declare that one or pass a different code. 
+```ruby
+class Quay < FieldStruct::Base
+  required :harbour, :string
+end
+
+
+class Disembark < Actionable::Action
+  step :check
+
+
+  private
+
+
+  def check = fail_with!(Quay.new, code: :bad_quay)
+end
+
+
+Disembark.run.errors.to_h # => {harbour: ["is required"]}
+Disembark.run.code        # => :bad_quay
+```
+ `output:` counts as output and not as an error key only if the failure code declares an output schema (or the action uses typed outcomes). In any other case `fail_with` rejects it. See [Declared outcomes](/reference/actionable/declared-outcomes/). ## `halt!` and the throw [Section titled “halt! and the throw”](#halt-and-the-throw) `halt!` records nothing, stops the main steps and keeps whatever result exists. The tag it throws is `Actionable::HALT` (`:actionable_halt`), and the runner wraps steps in `Actionable.catch_halt`. 
+```ruby
+class DropAnchor < Actionable::Action
+  step :near_shore
+  step :open_sea
+
+
+  private
+
+
+  def near_shore
+    succeed('anchored')
+    halt!
+  end
+
+
+  def open_sea = succeed('underway')
+end
+
+
+DropAnchor.run.message # => "anchored"
+Actionable::HALT       # => :actionable_halt
+```
+ ## Where a plain verb may go [Section titled “Where a plain verb may go”](#where-a-plain-verb-may-go) When a plain verb has more code after it in the same method, that code still runs, and nearly always a bang was forgotten. A class’s first `.run` reads its step and hook methods with Prism and raises `Actionable::DefinitionError` that names each offense, once per class (AC §5.14). The RuboCop cop `Actionable/VerbNotLast` flags the same things in your editor (see [RuboCop cop](/reference/actionable/rubocop/)). A plain verb is fine when it is: * the last statement of the method (a modifier `fail :x if bad?` counts as the statement) * the last statement of a branch (`if`, `unless`, ternary, `case`, `rescue`, `ensure`) whose construct is itself last * the right side of `&&`, `and`, `||` or `or` in last position * returned: `return fail(:x) if bad?`, or followed directly by `return` * the last statement of a block or loop body whose owning call is last * followed by an `ensure` clause * called on another receiver (`timetable.fail`, `legs.skip(1)`), which is never checked These are offenses: the verb has more code after it, it sits in a branch whose construct is followed by more code, it is the left side of `and` or `or` (`fail(:x) and return` never reaches `return`, because `fail` returns false), it is nested inside a bigger expression (`log(fail(:x))`, `@ok = fail(:x)`), or it appears in a `begin` body that has an `else`. Bang verbs are never checked, and neither are helper methods that aren’t declared steps or hooks. 
+```ruby
+def depart
+  fail(:fog_bound) if harbour.fogged?   # offense: cast_off still runs
+  cast_off
+end
+
+
+def depart
+  fail!(:fog_bound) if harbour.fogged?  # good
+  cast_off
+end
+```
+ Because the check parses the method’s source file, it skips methods that have none readable (`eval`, `define_method`) and files that don’t parse. A subclass gets checked against its own set of methods. Passing is remembered, while failing raises again on every run until it is fixed. To switch it off for the process: 
+```ruby
+Actionable.verb_position_check?        # => true
+Actionable.verb_position_check = false
+Actionable.verb_position_check?        # => false
+Actionable.verb_position_check = true
+Actionable::VerbPosition.prism?        # => true
+```
+ ## See also [Section titled “See also”](#see-also) * [Results](/reference/actionable/results/): what each verb produces * [Declared outcomes](/reference/actionable/declared-outcomes/): restricting the codes * [Errors and guardrails](/reference/actionable/errors/): the checks that raise
+
+# Declared failures, skips and typed outcomes
+
+> Announce the codes an action can end with, attach messages and metadata, and give each code its own output.
+
+With `fails` and `skips` an action lists the codes it can end with. That list is a contract: as soon as one code is declared, only declared codes are allowed (AC-I7). The core stores and shows the metadata but never interprets it, and the job adapter is the single reader, and only after an explicit opt-in. Typed outcomes take it a step further by giving each code its own output and result class. ## `fails` and `skips` [Section titled “fails and skips”](#fails-and-skips) 
+```ruby
+fails(code, message = nil, **metadata, &output_schema)
+skips(code, message = nil, **metadata, &output_schema)
+```
+ Both keep `{message:, metadata:}` under the code (a Symbol or String, turned into a Symbol), and the metadata is frozen. Any failure or skip ending with that code exposes the metadata as `result.metadata`, plus the declared message when the call passed none, since an explicit message always wins. Subclasses get a copy of the declarations and may add to them or redeclare. A redeclaration replaces message, metadata and schema together, so leaving out the block drops the parent’s schema. 
+```ruby
+class HoldBerth < Actionable::Action
+  fails :deck_full, 'no berth free on this deck', retry: false
+  fails :harbour_closed, retry: true
+  skips :already_held
+
+
+  step :hold
+
+
+  private
+
+
+  def hold = fail!(:deck_full)
+end
+
+
+result = HoldBerth.run
+result.message  # => "no berth free on this deck"
+result.metadata # => {retry: false}
+HoldBerth.declared_failures # => {deck_full: {retry: false}, harbour_closed: {retry: true}}
+HoldBerth.declared_skips    # => {already_held: {}}
+HoldBerth.failure_declarations[:deck_full] # => {message: "no berth free on this deck", metadata: {retry: false}}
+HoldBerth.skip_declarations.keys           # => [:already_held]
+```
+ | Reader | Returns | | --------------------------------------------------------- | ----------------------------------------------------------------------------------------- | | `declared_failures`, `declared_skips` | `{code => metadata}` | | `failure_declarations`, `skip_declarations` | `{code => {message:, metadata:}}`, plus `:output_schema` when the declaration had a block | | `failure_output_schema(code)`, `skip_output_schema(code)` | the code’s schema class, or `nil` | | `allows_failure_code?(code)` | true when no failures are declared, the code is declared, or it is a gem code | | `allows_skip_code?(code)` | true when no skips are declared or the code is declared | ## Strictness [Section titled “Strictness”](#strictness) Declare one failure code and the action may only fail with declared codes, plus the gem’s own `:invalid_input` and `:invalid_output`. Every other `fail`, `fail!`, `fail_with` or `fail_with!` raises `DefinitionError` at the call, and that includes the default `:invalid` of `fail_with`. Skips obey the same rule with no exceptions, since the gem emits no skip codes of its own: once a skip is declared, even the implicit `:skipped` of a bare `skip!` needs a declaration. Declaring failures doesn’t make skips strict, nor the reverse, and an action declaring neither is unchecked. A failure adopted from a nested child gets the same check (AC §5.9). 
+```ruby
+class CastOff < Actionable::Action
+  fails :moored
+
+
+  step :untie
+
+
+  private
+
+
+  def untie = fail!(:other)
+end
+
+
+begin
+  CastOff.run
+rescue Actionable::DefinitionError => e
+  e.message # => "CastOff fails with :other, which it does not declare; declare it with `fails :other` (declared: :moored)"
+end
+
+
+CastOff.allows_failure_code?('moored')         # => true
+CastOff.allows_failure_code?(:invalid_input)   # => true
+CastOff.allows_failure_code?(:other)           # => false
+CastOff.allows_skip_code?(:whatever)           # => true
+```
+ `fail` checks in this order: first that the code is an identifier, then that it is declared, and with typed outcomes the output checks come last. ### Gem codes [Section titled “Gem codes”](#gem-codes) `:invalid_input` and `:invalid_output` are allowed at all times. Declaring either one only puts metadata on the failures the gem builds, and when they occur stays the same. Neither takes an output schema, so a block on them raises `ArgumentError` at declaration. 
+```ruby
+class ReadSignal < Actionable::Action
+  input { required :flags, :string }
+  fails :invalid_input, 'garbled signal', retry: false
+
+
+  step :read
+
+
+  private
+
+
+  def read = succeed
+end
+
+
+ReadSignal.run.metadata # => {retry: false}
+ReadSignal.run.message  # => "input failed validation"
+```
+ ## Per-code output schemas [Section titled “Per-code output schemas”](#per-code-output-schemas) Give `fails` or `skips` a block and it becomes that code’s output schema, using the same DSL and the same reserved-name check as `output`. A result carrying such a code is assembled from the keywords it received and never from instance variables, then coerced and validated as a success is. If the output breaks the schema, the run ends as `Failure(:invalid_output)`. The block is an opt-in of its own, so all this holds with or without typed outcomes. For a failure code that has a schema, `fail`, `fail!`, `fail_with` and `fail_with!` receive the output through the `output:` keyword, as a Hash or a FieldStruct, and never as an error key. A skip receives it as keywords, like `succeed`. 
+```ruby
+class BookCabin < Actionable::Action
+  input { required :bunks, :integer }
+  fails(:deck_full) { required :free_bunks, :integer }
+
+
+  step :allocate
+
+
+  private
+
+
+  def allocate = fail!(:deck_full, 'not enough bunks', output: { free_bunks: 2 })
+end
+
+
+result = BookCabin.run(bunks: 5)
+result.code              # => :deck_full
+result.output.free_bunks # => 2
+BookCabin.failure_output_schema(:deck_full).attribute_names # => [:free_bunks]
+```
+ ## Typed outcomes [Section titled “Typed outcomes”](#typed-outcomes) 
+```ruby
+typed_outcomes                  # turn on
+typed_outcomes(enabled: false)  # turn off
+typed_outcomes?                 # read
+```
+ Turn typed outcomes on and `.run` hands back the action’s own `Success`, `Failure` and `Skipped` classes. They live as constants inside the action and inherit from the gem’s classes, so `is_a?(Actionable::Failure)` keeps working. When the parent action has typed outcomes, they inherit from the parent’s classes instead. The flag is copied as a snapshot, and a subclass can switch it off for itself. If the action already defines a constant named `Success`, `Failure` or `Skipped`, enabling the flag raises `DefinitionError`. Each code has a contract of its own. A failure or skip whose code has no schema carries `{}` as output, no matter what the steps left behind, and passing non-empty output raises `DefinitionError` at the call. An empty Hash is fine, and an `output:` that is neither a Hash nor a FieldStruct raises `ArgumentError`. The gem’s own failures are exempt: `invalid_output` carries the invalid struct and `invalid_input` always has `{}`. 
+```ruby
+class ChartRoute < Actionable::Action
+  typed_outcomes
+
+
+  input { required :leagues, :integer }
+  output { required :hours, :integer }
+
+
+  fails(:too_far) { required :range_leagues, :integer }
+
+
+  step :plan
+
+
+  private
+
+
+  def plan
+    fail!(:too_far, output: { range_leagues: 40 }) if input.leagues > 40
+    @hours = input.leagues * 2
+  end
+end
+
+
+ok = ChartRoute.run(leagues: 12)
+ok.class     # => ChartRoute::Success
+ok.hours     # => 24
+
+
+failure = ChartRoute.run(leagues: 90)
+failure.class                          # => ChartRoute::Failure
+failure.range_leagues                  # => 40
+failure.is_a?(Actionable::Failure)     # => true
+ChartRoute.typed_outcomes?             # => true
+```
+ Equality goes by class, so with typed outcomes `ChartRoute.run(leagues: 12) == Actionable::Success.new(...)` is false, and you compare against the action’s own class instead. When a child’s failure crosses into a typed parent, it turns into the parent’s own `Failure`, judged by the parent’s schema for that code. The parent still has to declare the code, and output that breaks the parent’s schema ends the parent as `invalid_output`. A parent without typed outcomes receives a plain `Actionable::Failure`. The gem’s two own codes cross with their output as it was (AC §5.10). ## See also [Section titled “See also”](#see-also) * [Control flow](/reference/actionable/control-flow/): the verbs these codes are used with * [Background jobs](/reference/actionable/jobs/): `honor_retry_metadata` reads the metadata * [Testing](/reference/actionable/testing/): stubs check codes against declarations * [RBS](/reference/actionable/rbs/): the types typed outcomes generate
+
+# Errors and guardrails
+
+> Every exception class the gem raises and each check that raises it, with the message you will see.
+
+There are only a few exception classes, but a lot of checks happen at declaration time, so a misconfigured action fails loudly the first time it loads or runs. Each message names the action (`action` when the class is anonymous) and what is wrong. One rule is different from the rest: a real exception raised inside a step, hook or guard passes straight out of `.run`, because the runner never rescues one (AC-I2). ## Exception classes [Section titled “Exception classes”](#exception-classes) | Class | Raised when | | ---------------------------------------- | -------------------------------------------------------------------------------------------------- | | `Actionable::Error` | base of everything this gem raises | | `Actionable::DefinitionError` | a misconfigured action (below); also used by the adapters | | `Actionable::Job::RetryableFailure` | `run_actionable` for a result that should be retried; has `result` | | `Actionable::Coverage::BaselineMismatch` | the coverage report differs from its baseline | | `ArgumentError` | a bad argument: a code that is not an identifier, an unsupported step target, a bad `measure` mode | | `FieldStruct::UnknownAttributeError` | input with `unknown_attributes :raise` and an extra keyword | `DefinitionError`, `RetryableFailure` and `BaselineMismatch` all inherit from `Actionable::Error`. The coverage report also raises `Actionable::Error` itself, for a missing baseline file or for a glob that matches no shard files. 
+```ruby
+Actionable::DefinitionError.ancestors.include?(Actionable::Error) # => true
+Actionable::Error.superclass # => StandardError
+FieldStruct::UnknownAttributeError.ancestors.include?(Actionable::Error) # => false
+```
+ ## Checks that raise `DefinitionError` [Section titled “Checks that raise DefinitionError”](#checks-that-raise-definitionerror) | Check | When | Message starts | | --------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | | missing step method | start of `.run` | `<Action> declares step(s) calling :a, :b but does not implement them` | | undeclared failure code | at the `fail` call | `<Action> fails with :x, which it does not declare; declare it with `fails :x` (declared: ...)` | | undeclared skip code | at the `skip` call | `<Action> skips with :x, which it does not declare; ...` | | reserved output name | at the `output` or `fails`/`skips` block | `<Action>: output field(s) :code conflict with reserved result attributes / methods / instance variables; rename them` | | output for a code without a schema | at the call, typed outcomes on | `<Action> fails with :x and output, but :x declares no output schema; declare one with `fails :x do … end\`\` | | own result constant | turning on `typed_outcomes` | `<Action> has its own Success, which typed outcomes would replace; rename it` | | verb not last | first `.run` of a class | one line per offense, see below | | `after_commit` without ActiveRecord 7.2 | at the declaration | see [Rails adapter](/reference/actionable/rails/) | 
+```ruby
+class RaiseGangway < Actionable::Action
+  step :missing_step
+end
+
+
+begin
+  RaiseGangway.run
+rescue Actionable::DefinitionError => e
+  e.message # => "RaiseGangway declares step(s) calling :missing_step but does not implement them"
+end
+
+
+begin
+  Class.new(Actionable::Action) { output { required :code, :string } }
+rescue Actionable::DefinitionError => e
+  e.message.start_with?('action: output field(s) :code conflict') # => true
+end
+```
+ The missing-method check looks at steps, hooks, case-step value sources and branch targets, plus `after_commit` hooks once the Rails adapter is loaded. A method is implemented when the instance has it, public or private, and it doesn’t belong to `Kernel`, `Object` or `BasicObject`, which is why `step :puts` fails. Steps that a guard would skip are checked as well, but the guard methods themselves are not (AC-B#missingmethod). The declared-code checks fire at the call, so a code nobody reaches never raises. The gem’s own codes are always allowed on failures. See [Declared outcomes](/reference/actionable/declared-outcomes/). ### The verb-position check [Section titled “The verb-position check”](#the-verb-position-check) The first time a class runs, Prism reads every step and hook method and flags any plain verb (`fail`, `fail_with`, `skip`, `succeed`, bare or on `self`) that has code after it. Every offense in every method comes back together in a single `DefinitionError`: 
+```plaintext
+Moor#tie_up (app/actions/moor.rb:6) calls `fail` with more code after it, which still runs: use fail! to stop here, or make it the method's last expression
+(see USAGE, Control flow)
+```
+ [Control flow](/reference/actionable/control-flow/#where-a-plain-verb-may-go) lists the tail positions that are accepted. How the check behaves (AC §5.14): * It happens once per class. A pass is remembered and a failure is not, so the error repeats on each run until you fix it. * Source files are read and cached by path and modification time. Methods with no readable source (`eval`, `define_method`, C), files that don’t parse, and a Prism that can’t load are all skipped without an error. * For a step made with `alias_method`, the original `def` is what gets checked. If a module is prepended over a step method, it hides the class’s own `def` and only the wrapper’s body is read. * `Actionable.verb_position_check = false` disables the check for the whole process. Nothing is parsed and no class is marked as checked, so switching it back on checks each class at its next run. ## Checks that raise `ArgumentError` [Section titled “Checks that raise ArgumentError”](#checks-that-raise-argumenterror) | Check | Message contains | | ------------------------------------------------------------------------ | -------------------------------------------------------------------------- | | a code that is not an identifier | `failure code "a b" is not an identifier; use a Symbol like :out_of_stock` | | `step` with an unsupported target | `unsupported step target: 5` | | unknown `measure` mode | `unknown measure mode :weird` | | `:sampled` without a valid rate | `measure :sampled requires rate: between 0 and 1, got 3` | | a schema block on `:invalid_input` or `:invalid_output` | `is a gem failure code and cannot declare an output schema` | | `output:` that is not a Hash or a FieldStruct | `output: must be a Hash or a FieldStruct, got Integer` | | an action whose `initialize` needs arguments, run with an `input` schema | Ruby’s own `wrong number of arguments` | 
+```ruby
+begin
+  Class.new(Actionable::Action) { step 5 }
+rescue ArgumentError => e
+  e.message # => "unsupported step target: 5"
+end
+
+
+begin
+  Class.new(Actionable::Action) { measure :sampled, rate: 3 }
+rescue ArgumentError => e
+  e.message # => "measure :sampled requires rate: between 0 and 1, got 3"
+end
+```
+ ## Input that raises instead of failing [Section titled “Input that raises instead of failing”](#input-that-raises-instead-of-failing) With `unknown_attributes :raise` in the schema, an undeclared keyword makes `.run` raise `FieldStruct::UnknownAttributeError` and no `Failure(:invalid_input)` comes back. That is the one case where input handling raises. 
+```ruby
+class ReadTideTable < Actionable::Action
+  input do
+    required :harbour, :string
+    unknown_attributes :raise
+  end
+
+
+  step :go
+
+
+  private
+
+
+  def go = succeed
+end
+
+
+begin
+  ReadTideTable.run(harbour: 'x', extra: 1)
+rescue FieldStruct::UnknownAttributeError => e
+  e.class # => FieldStruct::UnknownAttributeError
+end
+```
+ ## See also [Section titled “See also”](#see-also) * [Control flow](/reference/actionable/control-flow/): where plain verbs are allowed * [RuboCop cop](/reference/actionable/rubocop/): the same offenses in your editor * [Exceptions in field_struct](/reference/field-struct/exceptions/): the struct-side classes
+
+# Hooks and history
+
+> The four hook lists that run after the steps, what a hook may do to the result, and how to measure and read a run's history.
+
+Hooks fire after the main steps, when the outcome is already known. Measurement keeps a record of what ran and for how long. You declare both on the class, and a subclass gets a copy at the moment it is created (AC-I6). ## Hooks [Section titled “Hooks”](#hooks) 
+```ruby
+on_success(target, **options)
+on_failure(target, **options)
+on_skip(target, **options)
+always(target, **options)
+```
+ A hook accepts what a step accepts: a method name or an action class, plus `if:` and `unless:`. Declaring the same hook again swaps it in place. The four lists are readable through `Action.success_hooks`, `failure_hooks`, `skip_hooks` and `always_hooks`. The order of a run (AC §5.4): 1. The main steps run in order, all inside a single halt catch. 2. The result is whatever was recorded, or a new `Success` when nothing was. 3. Output is refreshed (see [Input and output](/reference/actionable/input-and-output/#output)). 4. One category is chosen from the result as it stands now: success picks `on_success`, skipped picks `on_skip`, everything else picks `on_failure`. That choice is final, even when a hook later changes the outcome. 5. The category’s hooks run in the order declared, then the `always` hooks run inside a halt catch of their own. 6. After every hook, a result it recorded is adopted and output is refreshed once more. 
+```ruby
+BELL = []
+
+
+class CastOff < Actionable::Action
+  step :inspect_lines
+  step :log_departure, if: :logged?
+  on_failure :ring_bell
+  always :stow_fenders
+
+
+  private
+
+
+  def logged? = true
+  def inspect_lines = fail!(:fogbound)
+  def log_departure = BELL << :log
+  def ring_bell = BELL << :bell
+  def stow_fenders = BELL << :fenders
+end
+
+
+CastOff.run.code                   # => :fogbound
+BELL                               # => [:bell, :fenders]
+CastOff.failure_hooks.map(&:name)  # => [:ring_bell]
+CastOff.always_hooks.map(&:name)   # => [:stow_fenders]
+CastOff.success_hooks.size         # => 0
+CastOff.skip_hooks.size            # => 0
+```
+ ### What a hook may do [Section titled “What a hook may do”](#what-a-hook-may-do) Verbs work inside hooks. A plain verb replaces the result and lets the remaining hooks run. A bang verb adopts its result and cuts off the rest of its own category, though `always` still runs and sees the new result. `halt!` leaves the result alone and ends the phase. That is why `succeed!` in an `on_failure` hook rescues the run, and `fail!(:overdue)` in an `on_success` hook turns a success into a failure (AC-B#hookverbs). 
+```ruby
+class Reroute < Actionable::Action
+  step :depart
+  on_failure :use_tender
+
+
+  private
+
+
+  def depart = fail!(:ebbing)
+  def use_tender = succeed!('crossed by tender')
+end
+
+
+Reroute.run.success? # => true
+Reroute.run.message  # => "crossed by tender"
+
+
+class PastCurfew < Actionable::Action
+  step :depart
+  on_success :refuse
+  on_success :unreachable
+
+
+  private
+
+
+  def depart = succeed
+  def refuse = fail!(:overdue)
+  def unreachable = raise('not reached')
+end
+
+
+PastCurfew.run.code # => :overdue
+```
+ If a hook raises, the exception travels up at once and nothing after it runs, `always` hooks too (AC-I2). A hook whose guard says no is passed over. When a hook sets an instance variable named like an output field, the next refresh picks it up. ## `measure` [Section titled “measure”](#measure) 
+```ruby
+measure(mode = nil, rate: nil)
+```
+ | Mode | Records | | ----------------- | ------------------------------------------------------- | | `:none` (default) | nothing, so `history` is `[]` | | `:all` | every run | | `:sampled` | that share of runs; needs `rate:` from 0 to 1 inclusive | A mode it doesn’t know raises `ArgumentError` (`unknown measure mode`), and so does `:sampled` with a missing or out-of-range rate (`measure :sampled requires rate: between 0 and 1`). A rate of 1 always records, a rate of 0 never does. Called with no argument, `measure` returns the mode. The readers behind it are `measure_rate`, `measure_all?`, `measure_sampled?` and `measure_sample_hit?`. A subclass inherits a snapshot of mode and rate. Measuring spreads downward: every run nested in a measuring run (action steps, hook actions, `run_each` items) measures as well, whatever its own `measure` says. A parent that doesn’t measure passes nothing down (AC-B#cascade). The state lives per fiber, so concurrent runs stay apart, and a run in a different Fiber never shows up in the parent’s history. 
+```ruby
+class Crossing < Actionable::Action
+  measure :all
+
+
+  step :load_deck
+  on_success :raise_ramp
+
+
+  private
+
+
+  def load_deck = nil
+  def raise_ramp = nil
+end
+
+
+Crossing.measure          # => :all
+Crossing.measure_all?     # => true
+Crossing.measure_rate     # => nil
+Crossing.measure_sampled? # => false
+
+
+class SpotCheck < Actionable::Action
+  measure :sampled, rate: 0.5
+end
+
+
+SpotCheck.measure_rate # => 0.5
+```
+ ## History [Section titled “History”](#history) The `history` of a measuring run is an `Actionable::History`, holding one `History::Step` for each step or hook that ran, in the order they ran. A step blocked by its guard leaves no entry. Each entry is added when its step ends, whether it halted or raised. | Step field | Meaning | | ------------ | ------------------------------------------------------------------------------- | | `section` | `:main` for steps; `:success`, `:failure`, `:skip` for outcome hooks; `:always` | | `name` | the step name, or the child action class for an action step | | `started_at` | wall-clock `Time` | | `duration` | monotonic seconds, a Float | | `code` | the code of the result the step recorded, or `nil` when it only set variables | | `nested` | the child’s `History` for an action step in a measuring run, else `nil` | A history responds to `steps`, `<<(step)` (returns the history), `empty?`, `took` (total of the durations), `as_json` (an Array of step hashes) and `to_json` (via Oj, compat mode). The `as_json` keys are `section`, `name`, `started_at` (ISO 8601, six fractional digits), `duration`, `code` and `history` (the nested `as_json`, or `nil`); for an action step `name` is the class name as a String. The entry for an action step times the child run from start to finish (AC §5.11). 
+```ruby
+history = Crossing.run.history
+history.steps.map { |s| [s.section, s.name] } # => [[:main, :load_deck], [:success, :raise_ramp]]
+history.empty?                                # => false
+history.took.class                            # => Float
+history.as_json.first.keys # => [:section, :name, :started_at, :duration, :code, :history]
+history.to_json.class                         # => String
+Actionable::Action.run.history                # => []
+```
+ ## See also [Section titled “See also”](#see-also) * [Actions and steps](/reference/actionable/actions-and-steps/): the steps that hooks mirror * [Control flow](/reference/actionable/control-flow/): the verbs hooks may call * [Batches and introspection](/reference/actionable/batches-and-introspection/): `describe` lists hooks and measure mode
+
+# Input and output
+
+> Declaring typed input and output with FieldStruct, dispatching input by a discriminator, and the failures the gem builds itself.
+
+Input and output of an action are both FieldStruct schemas: the input is checked before the first step, the output after the last. Types come from the system described on [FieldStruct’s types page](/reference/field-struct/types/). The gem produces two failures on its own, `:invalid_input` and `:invalid_output`, and below we say when each appears. ## `input` [Section titled “input”](#input) 
+```ruby
+input { |schema_body| ... } # declare
+input                       # read the schema class, or nil
+```
+ The block holds a FieldStruct body. `Action.input_schema` reads the same thing, `Action.input.new(...)` makes an instance, and a subclass shares the schema of its parent. If the action has no `input`, both the class reader and the step-side `input` return `nil` (AC-B#inputnoblock). `.run(**kwargs)` builds the struct from the keywords (string keys are fine), checks `valid?` and gives the steps the struct as `input`. Values get coerced, so `bunks: '12'` turns into `12`. Keywords the schema doesn’t know are dropped, except under `unknown_attributes :raise`, where `.run` raises `FieldStruct::UnknownAttributeError` itself and no failure is returned. 
+```ruby
+class FillDeck < Actionable::Action
+  input do
+    required :bunks, :integer
+    optional :remark, :string
+  end
+
+
+  step :load
+
+
+  private
+
+
+  def load = succeed("filled #{input.bunks}")
+end
+
+
+FillDeck.run(bunks: '12').message   # => "filled 12"
+bad = FillDeck.run(remark: 'x')
+bad.code                         # => :invalid_input
+bad.message                      # => "input failed validation"
+bad.errors.to_h                  # => {bunks: ["is required"]}
+bad.output                       # => {}
+FillDeck.input_schema.attribute_names # => [:bunks, :remark]
+FillDeck.input.equal?(FillDeck.input_schema) # => true
+```
+ With invalid input, no step runs. The failure holds the struct’s errors, an empty output and whatever metadata was declared for `:invalid_input` (AC-B#invalidinput). An invalid nested struct field reports just the field name with `"is invalid"`. Caution One positional argument that is already an instance of the input schema is taken as is. Any other positional argument, a Hash too, is dropped without a word, and the run ends `:invalid_input` with “is required” on every required field. Splat your hashes: `.run(**params)`. ## `input_for` [Section titled “input_for”](#input_for) 
+```ruby
+input_for(discriminator) { on(match, SchemaClass); default(SchemaClass) }
+```
+ `input_for` chooses the schema at run time, looking at a single keyword. `on` accepts a value, an Array of values or a Regexp. The first branch that matches in declaration order wins and `default` comes last. Matching works exactly as in case steps (see [Actions and steps](/reference/actionable/actions-and-steps/#case_step)), and the chosen schema is built and validated like a fixed input. If both `input` and `input_for` are declared, the dispatch has the final say. 
+```ruby
+class FreightShape < FieldStruct::Base
+  required :bunks, :integer
+end
+
+
+class RebateShape < FieldStruct::Base
+  required :voyage_no, :integer
+end
+
+
+class LogManifest < Actionable::Action
+  input_for(:manifest_kind) do
+    on 'freight', FreightShape
+    on %w[rebate refund], RebateShape
+  end
+
+
+  step :log
+
+
+  private
+
+
+  def log = succeed(input.class.name)
+end
+
+
+LogManifest.run(manifest_kind: 'freight', bunks: 5).message     # => "FreightShape"
+LogManifest.run(manifest_kind: 'rebate', voyage_no: 1).message  # => "RebateShape"
+LogManifest.run(manifest_kind: 'kraken').message                # => "no input shape for manifest_kind \"kraken\""
+LogManifest.run(manifest_kind: 'kraken').code                   # => :invalid_input
+```
+ If nothing matches and there is no `default`, the result is `Failure(:invalid_input)` with the message `no input shape for <discriminator> <value.inspect>`. An absent discriminator is read as `nil`. It is looked up by Symbol in the keywords only, so a string key such as `'manifest_kind'` finds nothing. One positional instance of any schema the dispatch can reach is accepted as is. `Action.input_dispatch` is an `InputDispatch` (`nil` without `input_for`): | Member | Returns | | ------------------- | -------------------------------------------------------------- | | `discriminator` | the Symbol | | `branches` | `[match_value, schema]` pairs in order | | `variants` | the match values in order; `%w[rebate refund]` stays one entry | | `schemas` | the distinct schema classes, branches then default | | `default_schema` | the `default` schema, or `nil` | | `schema_for(value)` | the first matching schema, else the default, else `nil` | 
+```ruby
+dispatch = LogManifest.input_dispatch
+dispatch.discriminator         # => :manifest_kind
+dispatch.variants              # => ["freight", ["rebate", "refund"]]
+dispatch.schema_for('refund')  # => RebateShape
+dispatch.schemas               # => [FreightShape, RebateShape]
+dispatch.branches.first        # => ["freight", FreightShape]
+dispatch.default_schema        # => nil
+```
+ `input_for` is a thin wrapper over `InputDispatch.define(discriminator) { ... }`, whose builder offers `on` and `default`. For a dispatched action the generated RBS types `.run` as `(*untyped)` (see [RBS](/reference/actionable/rbs/)). ## `output` [Section titled “output”](#output) 
+```ruby
+output { |schema_body| ... } # declare
+output                       # read the schema class, or nil
+```
+ Nothing but the fields declared in `output` reaches the result (AC-I5). Once the steps are done, and again after each hook, each declared field is filled from the instance variable with the same name (a variable holding `nil` still counts as set). Keywords given to `succeed` beat variables, and the struct is then coerced and validated. Variables and keywords that were never declared are left out. A valid struct becomes `result.output`, and its fields can be read straight off the result (see [Results](/reference/actionable/results/#output-delegation)). When a success can’t satisfy its output schema, it is swapped for `Failure(:invalid_output)`: the message is `output failed validation`, the field errors come from the struct, and the invalid struct stays available as `output` for inspection. Later hooks keep that invalid output instead of rebuilding it. Only a strict success is validated against the success schema (AC-B#invalidout). 
+```ruby
+class SettleFare < Actionable::Action
+  output { required :fare_pence, :integer }
+
+
+  step :settle
+
+
+  private
+
+
+  def settle
+    @fare_pence = nil
+    @scratch = 'never shown'
+  end
+end
+
+
+result = SettleFare.run
+result.code                 # => :invalid_output
+result.errors.to_h          # => {fare_pence: ["is required"]}
+result.output.valid?        # => false
+SettleFare.output_schema.attribute_names # => [:fare_pence]
+```
+ Keywords beat variables, and the schema coerces the values: 
+```ruby
+class CountDecks < Actionable::Action
+  output do
+    required :decks, :integer
+    required :tag, :string
+  end
+
+
+  step :count
+
+
+  private
+
+
+  def count
+    @decks = '2'
+    @tag = 7
+    succeed(decks: 4)
+  end
+end
+
+
+CountDecks.run.decks # => 4
+CountDecks.run.tag   # => "7"
+```
+ With no output schema the output is whatever `succeed` received (a Hash, `{}` if nothing), and fields are not delegated. A failure or skip grabs the declared variables that were set up to that point, as a best effort, without validating and without adding an `output` error. A failure code with its own schema is built from the keywords it was given and nothing else (see [Declared outcomes](/reference/actionable/declared-outcomes/)). A hook that sets a variable named like an output field is picked up by the next refresh, which means a hook can break an output that was valid before (AC-B#hookoutput). ### Reserved output names [Section titled “Reserved output names”](#reserved-output-names) Output fields can’t share a name with a result attribute (`code`, `message`, `output`, `history`, `errors`, `metadata`), a reserved action name (`result`, `input`) or any public Result method (`status`, `ok?`, `to_h`, `output_fields_set`, `absorb_errors_from`, and so on). Declaring one raises `Actionable::DefinitionError` right away: Result methods always win, so the gem refuses any ambiguity. Input field names aren’t guarded, because they are read as `input.x`. 
+```ruby
+begin
+  Class.new(Actionable::Action) { output { required :status, :string } }
+rescue Actionable::DefinitionError => e
+  e.message.include?(':status') # => true
+end
+```
+ ## See also [Section titled “See also”](#see-also) * [Declared outcomes](/reference/actionable/declared-outcomes/): per-code output schemas * [FieldStruct types](/reference/field-struct/types/): what you can declare inside the block * [Results](/reference/actionable/results/): `output_fields_set` and delegation
+
+# Background jobs
+
+> Map an action's result to ack, discard or retry, and run actions inside Sidekiq or ActiveJob classes.
+
+Inside your job class, the adapter runs an action and converts its result into a queue disposition. It is plain Ruby and wants neither queue gem (AC-B#jobpure). The run stays synchronous, and nothing gets enqueued by the adapter. Require it yourself: 
+```ruby
+require 'actionable/job'
+```
+ ## `Job.disposition` [Section titled “Job.disposition”](#jobdisposition) 
+```ruby
+Actionable::Job.disposition(result, permanent: DEFAULT_PERMANENT_CODES, honor_retry: false)
+# => :ack | :discard | :retry
+```
+ | Result | Disposition | | ------------------------------------ | ----------- | | success or skip | `:ack` | | failure whose code is in `permanent` | `:discard` | | any other failure | `:retry` | `DEFAULT_PERMANENT_CODES` is `[:invalid_input, :invalid_output, :not_found]`, because retrying input the action already turned down can’t help. Pass `honor_retry: true` and the `retry` key in a failure’s or skip’s metadata settles the question on its own. Truthy means `:retry`, permanent code or not, skip or not. Falsy means `:discard` for a failure and `:ack` for a skip. A result without that key, and any success, follows the table above. Results that don’t respond to `metadata` are never affected by the flag. 
+```ruby
+require 'actionable/job'
+
+
+Actionable::Job::DEFAULT_PERMANENT_CODES # => [:invalid_input, :invalid_output, :not_found]
+
+
+Actionable::Job.disposition(Actionable::Success.new)                       # => :ack
+Actionable::Job.disposition(Actionable::Skipped.new)                       # => :ack
+Actionable::Job.disposition(Actionable::Failure.new(code: :invalid_input)) # => :discard
+Actionable::Job.disposition(Actionable::Failure.new(code: :rough_sea))       # => :retry
+
+
+Actionable::Job.disposition(Actionable::Failure.new(code: :rough_sea), permanent: [:rough_sea]) # => :discard
+
+
+flagged = Actionable::Failure.new(code: :invalid_input, metadata: { retry: true })
+Actionable::Job.disposition(flagged, honor_retry: true) # => :retry
+Actionable::Job.disposition(flagged)                    # => :discard
+
+
+stop = Actionable::Failure.new(code: :rough_sea, metadata: { retry: false })
+Actionable::Job.disposition(stop, honor_retry: true)    # => :discard
+Actionable::Job.disposition(Actionable::Skipped.new(metadata: { retry: true }), honor_retry: true) # => :retry
+```
+ ## `honor_retry_metadata` [Section titled “honor_retry_metadata”](#honor_retry_metadata) 
+```ruby
+honor_retry_metadata(enabled: true)
+honor_retry_metadata?
+```
+ Metadata-driven retries are opt-in per action, through `honor_retry_metadata`. The reader looks up the superclass chain at call time and answers `false` unless someone enabled it, and a subclass can switch it back off with `enabled: false`. The macro only exists on `Action` once the adapter is loaded. Without the opt-in a job ignores metadata, which is how the core keeps it opaque (AC-I7). You declare the metadata itself with `fails` (see [Declared outcomes](/reference/actionable/declared-outcomes/)). 
+```ruby
+require 'actionable/job'
+
+
+class TideTable < Actionable::Action
+  honor_retry_metadata
+  fails :rough_sea, retry: true
+  fails :smudged_chart, retry: false
+end
+
+
+class StrictTideTable < TideTable
+  honor_retry_metadata(enabled: false)
+end
+
+
+TideTable.honor_retry_metadata?          # => true
+StrictTideTable.honor_retry_metadata?        # => false
+Actionable::Action.honor_retry_metadata?  # => false
+TideTable.declared_failures              # => {rough_sea: {retry: true}, smudged_chart: {retry: false}}
+```
+ ## `Job::Mixin` [Section titled “Job::Mixin”](#jobmixin) Mix `Actionable::Job::Mixin` into a Sidekiq worker or an ActiveJob class to get: | Member | Meaning | | ----------------------------------------------- | ------------------------------------------------------------------------------- | | `run_actionable(action_class, *args, **kwargs)` | run the action, keep the result, raise on `:retry`, otherwise return the result | | `actionable_result` | the result of the last `run_actionable` | | `actionable_permanent_codes` | the permanent list; override it to change the codes | When the action responds to `honor_retry_metadata?`, `run_actionable` takes `honor_retry` from it. On `:ack` and `:discard` it hands back the result, so the job ends normally and the caller can decide whether a discard is worth logging. A real exception from inside the action passes through untouched. ActiveJob needs `retry_on Actionable::Job::RetryableFailure` declared, while Sidekiq already retries any job that raises. 
+```ruby
+class TideTableJob < ApplicationJob
+  include Actionable::Job::Mixin
+  retry_on Actionable::Job::RetryableFailure, wait: :polynomially_longer
+
+
+  def perform(harbour)
+    run_actionable(TideTable, harbour: harbour)
+  end
+end
+```
+ No queue gem is needed for the mixin, so a plain object will do for a try: 
+```ruby
+require 'actionable/job'
+
+
+class Choppy < Actionable::Action
+  fails :rough_sea
+  step :sail
+
+
+  private
+
+
+  def sail = fail!(:rough_sea)
+end
+
+
+class DispatchWorker
+  include Actionable::Job::Mixin
+
+
+  def perform = run_actionable(Choppy)
+end
+
+
+worker = DispatchWorker.new
+begin
+  worker.perform
+rescue Actionable::Job::RetryableFailure => e
+  e.message      # => "actionable run failed with retryable code :rough_sea"
+  e.result.code  # => :rough_sea
+end
+worker.actionable_result.failure? # => true
+```
+ ## `RetryableFailure` [Section titled “RetryableFailure”](#retryablefailure) `Actionable::Job::RetryableFailure.new(result)` is an `Actionable::Error` with a `result` reader. Its message reads `actionable run failed with retryable code :code` for a failure, and `actionable run skipped with retryable code :code` for a retried skip. ## See also [Section titled “See also”](#see-also) * [Declared outcomes](/reference/actionable/declared-outcomes/): where `retry:` metadata is declared * [Errors and guardrails](/reference/actionable/errors/): the exception classes * [Results](/reference/actionable/results/): `metadata` on failures and skips
+
+# Rails adapter
+
+> Run an action in a database transaction, schedule work after the commit, and validate any object with ActiveModel rules.
+
+Three things come with the Rails adapter: `transactional`, `after_commit` and `ProxyValidator`. You have to require it. It never loads itself, not even when ActiveRecord is defined, and without it `transactional` is a plain `NoMethodError` when the class is defined (AC-B#railsload). 
+```ruby
+require 'actionable/rails'
+```
+ ActiveModel and ActiveSupport’s string inflections are required. Transactions want ActiveRecord 7.1 or newer, `after_commit` wants 7.2 or newer, and a no-op `Railtie` loads whenever `Rails::Railtie` exists. ## `transactional` [Section titled “transactional”](#transactional) 
+```ruby
+transactional(model:, **options)
+transaction_config # => {model:, options:}, or nil
+```
+ The whole run, hooks included, goes inside `model.transaction(**options) { ... }`. `model:` takes a class, or a Symbol or String that gets camelized and constantized (`:voyage` becomes `Voyage`). A subclass uses the config of the nearest ancestor that set one, and can set its own. `describe[:transactional]` shows it. 
+```ruby
+class LogCrossings < Actionable::Action
+  transactional model: :voyage
+  step :record
+  after_commit :radio_harbour
+end
+
+
+LogCrossings.transaction_config # => {model: :voyage, options: {}}
+```
+ | Outcome of the run | Transaction | | ----------------------------------------------------- | ---------------------------------------------- | | success | commits | | skip | commits | | recorded failure | rolls back, and the failure result is returned | | failure adopted from a hook (`fail!` in `on_success`) | rolls back | | exception | rolls back, and the exception propagates | Every hook kind runs inside the transaction, `always` too, so what they write lives or dies with the run. Rollback on failure works through an internal error that is raised inside the block and swallowed just outside it. When a transaction is already open (`model.connection.transaction_open?`), the action opens a savepoint (`requires_new: true`) unless you give `requires_new:` yourself. A failing inner action undoes only its own writes, and the outer transaction never commits them. Give `requires_new: false` to join the outer transaction. Options go through as written, and actions without `transactional` are left alone (AC-B#txsavepoint). ## `after_commit` [Section titled “after_commit”](#after_commit) 
+```ruby
+after_commit(target, **options)
+after_commit_hooks # => the declared hooks, in order
+```
+ The declaration takes a method name or an action class, with `if:`, `unless:` and `input:`. It relies on `ActiveRecord.after_all_transactions_commit`, so declaring it without ActiveRecord, or on a version before 7.2, raises `DefinitionError`. Subclasses get a copy of the hooks. A run that ends in success registers its hooks with ActiveRecord. Each fires once, in order, when the outermost open transaction commits (the action’s own savepoint doesn’t count), or right away if none is open. A failure or a skip never fires them, and neither does a rollback of an enclosing transaction. Nested actions each fire their own hooks once, child first. If a transactional parent fails afterwards, a successful child’s pending hook is dropped. By that point the run is over, so a hook can’t alter the result that was returned. A halting verb only stops the `after_commit` hooks still to come. Hooks leave no trace in the history, and guards are evaluated at firing time. An exception propagates from the place the commit happened, with the writes already committed (AC §5.16). `describe[:hooks][:after_commit]` lists the names and is present whenever the adapter is loaded. `describe_text` prints an `after_commit:` line only when there is something to list. The missing-method and verb-position checks apply to these methods as well. ## `ProxyValidator` [Section titled “ProxyValidator”](#proxyvalidator) Use `Actionable::ProxyValidator` to validate an object that isn’t a model. It includes `ActiveModel::Validations`. You subclass it, write the rules with `validates`, and construct it with `Rules.new(delegate)`. When a rule reads an attribute the delegate responds to, the read is forwarded, and anything else raises as usual. | Member | Meaning | | ------------------ | ------------------------------------------------------------------------------------- | | `delegate` | the object being validated | | `formatted_errors` | runs `valid?`, returns `errors.to_hash` as `{attribute => [messages]}` | | `model_name` | built from the class name (`ProxyValidator` for an anonymous class), so messages work | 
+```ruby
+class ManifestRules < Actionable::ProxyValidator
+  validates :callsign, presence: true
+end
+
+
+rules = ManifestRules.new(manifest)
+rules.formatted_errors # => {callsign: ["can't be blank"]}
+
+
+# in a step, ready to splat into a failure
+fail!(:invalid, **rules.formatted_errors)
+```
+ ## See also [Section titled “See also”](#see-also) * [Actions and steps](/reference/actionable/actions-and-steps/): hooks, which run inside the transaction * [Batches and introspection](/reference/actionable/batches-and-introspection/): `describe` and the transaction config * [Errors and guardrails](/reference/actionable/errors/): `DefinitionError` cases
+
+# RBS for your actions
+
+> What Actionable::RBS.generate emits for run, input, output, result classes, codes and typed outcomes.
+
+`Actionable::RBS.generate(klass)` gives back RBS source for a single named action, derived from its input and output schemas by way of FieldStruct’s metadata. A rake task is a good place for it, with the file committed beside your code. Struct types are covered in [Introspection and tooling](/reference/field-struct/introspection-and-tooling/). The gem’s own signatures live in its `sig/` directory, and `generate` is the only public contract (AC §5.20). 
+```ruby
+Actionable::RBS.generate(klass) # => String
+```
+ Pass a named subclass of `Actionable::Action`. Anything else raises `ArgumentError`: `Actionable::RBS.generate expects an Actionable::Action subclass, got <inspect>` for a non-action, and `cannot generate RBS for an anonymous action` for an anonymous one. 
+```ruby
+class ReleaseMooring < Actionable::Action
+  input do
+    required :voyage_id, :integer
+    optional :remark, :string
+  end
+  output { required :lines_freed, :integer }
+
+
+  fails :tide_too_low
+  skips :already_cast_off
+end
+
+
+rbs = Actionable::RBS.generate(ReleaseMooring)
+rbs.lines.first.chomp                              # => "class ReleaseMooring < ::Actionable::Action"
+rbs.include?('def self.run: (voyage_id: ::Integer, ?remark: ::String?) -> Result') # => true
+rbs.include?('@lines_freed: ::Integer?')            # => true
+rbs.include?('type failure_code = :tide_too_low | :invalid_input | :invalid_output') # => true
+rbs.include?('type skip_code = :already_cast_off') # => true
+rbs.end_with?("end\n")                             # => true
+```
+ ## What is emitted [Section titled “What is emitted”](#what-is-emitted) | Part | Emitted | | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | | ancestors | member-less declarations of every named ancestor between the class and `Actionable::Action`, outermost first; wrapped in their namespaces | | `def self.run` | keywords from a fixed input schema, plus an overload taking a built `(InputSchema input)` | | `input` and `InputSchema` | for a fixed input, `def input: () -> InputSchema` and a `FieldStruct::Base` subclass with a reader and writer per field | | instance variables | one nullable `@field` per output field, so steps that assign them type-check | | `Output` and `Result` | `Output` with readers and writers; `Result < ::Actionable::Result` with `output` and a reader per field | | code aliases | `type failure_code` (declared codes, then the gem’s two, de-duplicated) and `type skip_code` (declared only) | How `run` gets its keywords: a required field is `name: Type`, and one that may be left out is `?name: Type`. Optional fields are nullable too (`?name: Type?`), and a required field with a default can be omitted. Free-form actions, and any action using an `input_for` dispatch, get `(*untyped)`. The return type is `Result` when the output has a schema and `::Actionable::Result` when it hasn’t. `InputSchema`, `Output` and `Result` exist in RBS only. If Ruby already resolves `InputSchema` on the class, an ancestor or an included module, generation raises `ArgumentError` and asks you to rename that constant. Output is indented two spaces, blank lines are empty, types are fully qualified, and the text ends with a newline. 
+```ruby
+class Freeform < Actionable::Action; end
+
+
+Actionable::RBS.generate(Freeform).include?('def self.run: (*untyped) -> ::Actionable::Result') # => true
+
+
+begin
+  Actionable::RBS.generate(Class.new(Actionable::Action))
+rescue ArgumentError => e
+  e.message # => "cannot generate RBS for an anonymous action"
+end
+```
+ ## Typed outcomes [Section titled “Typed outcomes”](#typed-outcomes) [Typed outcomes](/reference/actionable/declared-outcomes/#typed-outcomes) add the result classes to the output: the success `Output` when there is one, an output class for every code that has a schema (`<CamelCode>SkipOutput` or `<CamelCode>FailureOutput`), and the `Success`, `Skipped` and `Failure` classes. `run` returns `(Success | Skipped | Failure)`. * `Success` has `code: :success`, `output: Output` (or a Hash when there is no schema) and a reader per success field. * `Skipped` has `code` typed as `skip_code` (or `::Symbol` when none are declared) and `output` as the union of the skip output classes and the Hash. * `Failure` has `code` typed as `failure_code`, `output` as the union of failure classes, skip classes, `Output` and the Hash, and every reader nullable, since a broken output can lack a required field. * Bases are the parent action’s own classes when the parent has typed outcomes, else the gem classes. A trailing `?` or `!` on a code turns into `Predicate` or `Bang` in the class name (`:expired?` gives `ExpiredPredicate...`). If two codes of one kind map to the same class name, or a name doesn’t begin with an ASCII capital, `ArgumentError` names both codes. 
+```ruby
+class Charter < Actionable::Action
+  typed_outcomes
+
+
+  input { required :nights, :integer }
+  output { required :arrives_in, :integer }
+
+
+  fails(:over_limit) { required :max_nights, :integer }
+end
+
+
+typed = Actionable::RBS.generate(Charter)
+typed.include?('-> (Success | Skipped | Failure)')                  # => true
+typed.include?('class OverLimitFailureOutput < ::FieldStruct::Base')  # => true
+typed.include?('class Success < ::Actionable::Success')             # => true
+typed.include?('def code: () -> failure_code')                      # => true
+```
+ Caution The generated types describe valid instances of your classes only. Under typed outcomes, a `Failure` subclass defined by the host passes through the rebuild untouched, and the generator doesn’t describe it. ## See also [Section titled “See also”](#see-also) * [Declared outcomes](/reference/actionable/declared-outcomes/): where codes and typed outcomes are declared * [Input and output](/reference/actionable/input-and-output/): the schemas the types come from * [Introspection and tooling](/reference/field-struct/introspection-and-tooling/): `FieldStruct::RBS` for structs
+
+# Results
+
+> The Success, Failure and Skipped result classes: attributes, predicates, serialization and equality.
+
+A run hands back one result. `Actionable::Result` itself is abstract. The concrete classes are `Success`, `Failure` and `Skipped`, all FieldStruct classes carrying `code`, `message`, `output` and `history`, with `metadata` added on failures and skips. The outcomes exclude each other, so for any concrete result exactly one predicate is true (AC-I3). ## Attributes [Section titled “Attributes”](#attributes) | Attribute | Success | Failure | Skipped | Default | | ---------- | ------- | ------- | ------- | -------------------------------- | | `code` | yes | yes | yes | `:success`, `:error`, `:skipped` | | `message` | yes | yes | yes | `nil` | | `output` | yes | yes | yes | a fresh `{}` | | `history` | yes | yes | yes | a fresh `[]` | | `errors` | yes | yes | yes | empty | | `metadata` | no | yes | yes | a fresh `{}` | `code` gets coerced to a Symbol. `errors` is the FieldStruct collection and not a field, which means `errors[:field]` gives an Array of Strings and `errors.to_h` and `errors.full_messages` behave as on any struct. A `Success` carries no `metadata`, and asking for it raises `NoMethodError` (AC §5.1). 
+```ruby
+Actionable::Success.new.code                 # => :success
+Actionable::Failure.new.code                 # => :error
+Actionable::Skipped.new.code                 # => :skipped
+Actionable::Failure.new(code: 'adrift').code  # => :adrift
+Actionable::Failure.new.metadata             # => {}
+Actionable::Success.new.respond_to?(:metadata) # => false
+```
+ ## Predicates [Section titled “Predicates”](#predicates) | Method | True for | | ------------------------- | --------------------------------------- | | `success?`, `successful?` | `Success` | | `failure?`, `failed?` | `Failure` | | `skipped?` | `Skipped` | | `ok?` | `Success` and `Skipped` (not a failure) | | `status` | `:success`, `:failure` or `:skipped` | `status` tells you which outcome it was, and `code` gives the specific reason. 
+```ruby
+failure = Actionable::Failure.new(code: :adrift)
+failure.failure?   # => true
+failure.failed?    # => true
+failure.ok?        # => false
+failure.status     # => :failure
+Actionable::Success.new.successful?  # => true
+Actionable::Skipped.new.skipped?     # => true
+Actionable::Skipped.new.ok?          # => true
+```
+ ## Serialization [Section titled “Serialization”](#serialization) `to_h` gives `{code:, message:, output:, history:, errors:}`, plus `metadata:` for a failure or skip. A struct output goes through its own `to_h`, the history through `History#as_json`, and `errors` through `errors.to_h`. `to_api_h(index: nil, id_field: :id)` gives exactly `{index:, status:, id:, errors:}`. For `id` the gem reads `id_field` off the output: a declared field when the output is a struct, a key when it is a Hash, and `nil` otherwise. 
+```ruby
+failure = Actionable::Failure.new(code: :adrift)
+failure.to_h.keys                # => [:code, :message, :output, :history, :errors, :metadata]
+failure.to_api_h(index: 2)       # => {index: 2, status: :failure, id: nil, errors: {}}
+Actionable::Success.new(output: { id: 31 }).to_api_h # => {index: nil, status: :success, id: 31, errors: {}}
+Actionable::Success.new.to_h.key?(:metadata)  # => false
+```
+ `inspect` and `to_s` produce `#<ClassName name=value ...>`, listing every attribute and `errors` sorted by name. That differs from FieldStruct’s own `inspect` on purpose. 
+```ruby
+Actionable::Failure.new(code: :adrift).inspect # => "#<Actionable::Failure code=:adrift errors={} history=[] message=nil metadata={} output={}>"
+```
+ ## Output delegation [Section titled “Output delegation”](#output-delegation) Any declared field of a struct `output` can be read from the result itself: `result.fare_pence` equals `result.output.fare_pence`, and `respond_to?` says the same. Undeclared names, and outputs that are not FieldStruct instances (a free-form Hash, `{}`), don’t delegate and give the usual `NoMethodError`. A name that collides with a Result method can’t be an output field at all (see [Input and output](/reference/actionable/input-and-output/)). `output_fields_set` lists which output fields a run really set (instance variables plus verb keywords). On a hand-built result it is `nil`. It’s a plain accessor and not a field, so equality ignores it. 
+```ruby
+class TallyFare < Actionable::Action
+  output { required :fare_pence, :integer }
+
+
+  step :tally
+
+
+  private
+
+
+  def tally = @fare_pence = '350'.to_i + 25
+end
+
+
+result = TallyFare.run
+result.fare_pence        # => 375
+result.output.fare_pence # => 375
+result.output_fields_set # => [:fare_pence]
+result.respond_to?(:fare_pence) # => true
+Actionable::Success.new.output_fields_set # => nil
+```
+ ## Errors [Section titled “Errors”](#errors) `Failure#absorb_errors_from(source)` takes each `field => messages` pair from `source.errors.to_h`, adds every message to the failure one by one, and returns the failure. Any object whose `errors` answers `to_h` will do. 
+```ruby
+class Crossing < FieldStruct::Base
+  required :harbour, :string
+end
+
+
+failure = Actionable::Failure.new(code: :invalid)
+failure.absorb_errors_from(Crossing.new).equal?(failure) # => true
+failure.errors.to_h                                      # => {harbour: ["is required"]}
+failure.errors.full_messages                             # => ["Harbour is required"]
+```
+ ## Equality and pattern matching [Section titled “Equality and pattern matching”](#equality-and-pattern-matching) Equality looks at the exact class and the attributes. A `Success` is never equal to a `Failure` with matching attributes, while two results built alike are equal. With [typed outcomes](/reference/actionable/declared-outcomes/#typed-outcomes), a result equals only one from its own action’s class. A result is a FieldStruct, so `case/in` can deconstruct `code`, `message`, `output`, `history` (and `metadata` on failures and skips), and class patterns work too. `errors` and `status` are methods rather than fields, so a hash pattern that names either never matches. 
+```ruby
+Actionable::Success.new == Actionable::Success.new  # => true
+Actionable::Success.new == Actionable::Skipped.new  # => false
+
+
+outcome = case Actionable::Failure.new(code: :adrift)
+          in Actionable::Failure(code:) then "failed with #{code}"
+          end
+outcome # => "failed with adrift"
+```
+ ## See also [Section titled “See also”](#see-also) * [Control flow](/reference/actionable/control-flow/): the verbs that build results * [Input and output](/reference/actionable/input-and-output/): what ends up in `output` * [Hooks and history](/reference/actionable/hooks-and-history/): the `history` attribute
+
+# RuboCop cop
+
+> The Actionable/VerbNotLast cop: how to enable it, what it reports, and how it decides which classes are actions.
+
+`Actionable/VerbNotLast` flags what the first-run verb check flags (see [Control flow](/reference/actionable/control-flow/#where-a-plain-verb-may-go)), but it does so in your editor and in CI and never executes the code. It looks at one file at a time and shares the Prism-based analyzer with the runtime check (AC §5.15). Every block on this page is plain code, since the cop needs RuboCop and the site’s bundle doesn’t include it. ## Enable it [Section titled “Enable it”](#enable-it) On RuboCop 1.72 or newer, list the plugin in `.rubocop.yml`: 
+```yaml
+plugins:
+  - actionable-rb:
+      require_path: actionable/rubocop
+```
+ Older versions use `require: [actionable/rubocop]` instead. The gemspec names `Actionable::RubocopPlugin` as its lint_roller plugin, and that plugin only loads when `lint_roller` is around. Without it, an older RuboCop gets the shipped `config.yml` as its default configuration. Once loaded, the cop is on by default. ## Options [Section titled “Options”](#options) | Option | Default | Meaning | | ------------------- | ----------------------------------------- | ----------------------------------------------------------- | | `ActionBaseClasses` | `Actionable::Action`, `ApplicationAction` | full names of the classes whose subclasses count as actions | 
+```yaml
+Actionable/VerbNotLast:
+  ActionBaseClasses:
+    - Actionable::Action
+    - ApplicationAction
+    - Harbor::BaseAction
+```
+ Setting `ActionBaseClasses` replaces the defaults, so repeat any you still want. A leading `::` is ignored. ## What it reports [Section titled “What it reports”](#what-it-reports) An offense is reported on the call node itself, with line and column, and that holds for files with multibyte characters too: 
+```plaintext
+`fail` records the outcome and keeps running, and more code runs after it: use `fail!` to stop here, or make it the method's last expression.
+```
+ The offenses match the runtime ones: a plain verb followed by more code, a verb in a branch whose enclosing construct is followed by more code, a verb on the left of `and` or `or`, a verb nested inside a bigger expression, and a verb in a `begin` body that has an `else`. Bang verbs are never reported, and neither is a verb sent to another receiver. 
+```ruby
+# bad
+def board
+  fail(:deck_full) if deck.full?
+  issue_pass
+end
+
+
+# good
+def board
+  fail!(:deck_full) if deck.full?
+  issue_pass
+end
+```
+ ## What it checks [Section titled “What it checks”](#what-it-checks) The cop checks a class body whose superclass is an action base and which declares `step` or `case_step`. The methods it inspects are those named in `step`, those that case-step branches point to (the second argument of `on`, the first of `default`), and those named in `on_success`, `on_failure`, `on_skip`, `always` and `after_commit`. A `Class.new(Base) do ... end` block counts too. The method that supplies a case step’s value is never inspected. A class is an action base when its name is in `ActionBaseClasses`, or when the same file defines it (`class X < Y` or `X = Class.new(Y)`, at any depth) and its superclass chain leads to a listed name. Names resolve the way Ruby resolves them: start at the enclosing `module` or `class`, move outward to the first match, fall back to top level, and read `::X` as absolute. Inside `module Harbor`, `Base` therefore means `Harbor::Base` when the file defines one, and a `Legacy::ApplicationAction` defined in the file shadows the listed default. A class the file defines speaks for itself, even if its full name is in the list as well. Other classes are left alone (say, one from a transaction library that has its own `step`), and so are classes reopened without a superclass. Cycles in the superclass chain don’t loop forever. A file Prism can’t parse produces no offenses. ## See also [Section titled “See also”](#see-also) * [Control flow](/reference/actionable/control-flow/): the rule the cop enforces * [Errors and guardrails](/reference/actionable/errors/): the runtime check * [Actions and steps](/reference/actionable/actions-and-steps/): what counts as a step
+
+# Testing
+
+> The perform_actionable matcher, result builders, collaborator stubs and outcome coverage for testing actions.
+
+Testing takes two requires. `actionable/rspec` brings the matcher and the stub helpers, and `actionable/rspec/coverage` keeps track of which declared outcomes your suite reached. The core loads neither (AC §5.18, §5.19). 
+```ruby
+require 'actionable/rspec'
+require 'actionable/rspec/coverage'
+```
+ If `RSpec` is defined, requiring `actionable/rspec` mixes both modules into every example group. Inside `module Actionable` the name `RSpec` resolves to `Actionable::RSpec`, so write `::RSpec` for the framework. Examples that need RSpec’s mocks are plain code blocks here. The matcher, the result builders and coverage work without a framework, so those examples run on a small object that extends the modules. In a real suite you call the same methods straight from an example. 
+```ruby
+require 'actionable/rspec'
+
+
+class ClearBerth < Actionable::Action
+  input { required :berth, :string }
+  fails :occupied, 'berth is occupied'
+  skips :already_free
+
+
+  step :inspect_berth
+
+
+  private
+
+
+  def inspect_berth
+    skip!(:already_free) if input.berth == 'free'
+    fail!(:occupied)
+  end
+end
+
+
+# in a spec, these methods are already available
+example = Object.new.extend(Actionable::RSpec::Matchers, Actionable::RSpec::Stubs)
+```
+ ## `perform_actionable` [Section titled “perform_actionable”](#perform_actionable) 
+```ruby
+expect(ActionClass).to perform_actionable(*args, **kwargs).and_fail(:code, /message/)
+```
+ You apply the matcher to an action class. It calls `.run(*args, **kwargs)` and catches a raised `StandardError` rather than letting it out. Used bare, it expects a success. A chain selects the outcome instead, and the last chain wins. Every chain accepts an optional block, which receives `(result_or_nil, exception_or_nil)` after the primary match and has to return something truthy. | Chain | Passes when | | ------------------------------------------------------- | ----------------------------------------------------------------- | | `and_succeed(message = nil)` | no exception, a success, and the message matches | | `and_fail(code = nil, message = nil)` | a failure, with the code `==` and the message matching when given | | `and_skip(code = nil, message = nil)` | a skip, with the same checks | | `and_raise(error_class = StandardError, message = nil)` | an exception of that kind, with a matching message | Messages are compared with `===`, so a String, a Regexp or a class all work, and `nil` skips the check. To the matcher a skip is neither a success nor a failure. `does_not_match?` negates the primary match alone and ignores the block. 
+```ruby
+matcher = example.perform_actionable(berth: 'B7').and_fail(:occupied, /occupied/)
+matcher.matches?(ClearBerth)   # => true
+matcher.description            # => "perform actionable and fail"
+
+
+example.perform_actionable(berth: 'free').and_skip(:already_free).matches?(ClearBerth) # => true
+example.perform_actionable(berth: 'B7').and_succeed.matches?(ClearBerth)               # => false
+```
+ A mismatch produces the message `expected <Action> to <phrase>, but <actual>`. The actual part is the result’s `inspect`, or `it raised <Class>: <message>` followed by the backtrace, or `no result was produced`. The backtrace is complete unless `ACTIONABLE_SHORT_BACKTRACE` is set, which cuts it to the first `ACTIONABLE_BACKTRACE_QTY` frames (10 by default). 
+```ruby
+failing = example.perform_actionable(berth: 'B7').and_succeed
+failing.matches?(ClearBerth)
+failing.failure_message.start_with?('expected ClearBerth to succeed, but got #<Actionable::Failure') # => true
+```
+ ### Declared codes are checked [Section titled “Declared codes are checked”](#declared-codes-are-checked) Say the expected code is a Symbol and the action declares codes of that kind. A code it didn’t declare raises `ArgumentError`, negated expectations included. That is a broken spec rather than a mismatch, since the test would assert an outcome the action can never produce. Failures may also use the gem’s own codes, a bare `and_fail` or `and_skip` always passes this check, and an action that declares none accepts any code. 
+```ruby
+begin
+  example.perform_actionable(berth: 'B7').and_fail(:flotsam).matches?(ClearBerth)
+rescue ArgumentError => e
+  e.message # => "ClearBerth does not declare :flotsam (declared: :occupied); a stub or and_fail with it tests a failure the action can never return"
+end
+```
+ ## Result builders [Section titled “Result builders”](#result-builders) Each builder returns a real result, with nothing stubbed. | Builder | Defaults | | --------------------------------------------------------------------------------------------- | ----------- | | `actionable_success_result(message: nil, output: {}, errors: {})` | a `Success` | | `actionable_failure_result(code: :error, message: nil, output: {}, errors: {}, metadata: {})` | a `Failure` | | `actionable_skip_result(code: :skipped, message: nil, output: {}, metadata: {})` | a `Skipped` | Values given to `errors:`, a String or an Array, are added to the result’s errors. 
+```ruby
+failure = example.actionable_failure_result(code: :occupied, errors: { berth: 'is wrong' })
+failure.code             # => :occupied
+failure.errors.to_h      # => {berth: ["is wrong"]}
+example.actionable_success_result(output: { slot: 1 }).output # => {slot: 1}
+example.actionable_skip_result.code                         # => :skipped
+```
+ ## Stubs [Section titled “Stubs”](#stubs) 
+```ruby
+allow_actionable_success(action, message:, output:, errors:)
+allow_actionable_failure(action, code: :error, message:, output:, errors:, metadata:)
+allow_actionable_skip(action, code: :skipped, message:, output:, metadata:)
+stub_actionable_success(...)   # also: stub_actionable_failure, stub_actionable_skip
+```
+ `allow_*` lets `action.run` through rspec-mocks, and `stub_*` also expects the call to happen. Both build a real result, stub `run` to return it whatever the arguments, and hand the result back. They replace a child action or a collaborator inside the action under test. 
+```ruby
+RSpec.describe BookCrossing do
+  it 'stops when the deck is full' do
+    allow_actionable_failure(HoldBerth, code: :deck_full)
+
+
+    expect(BookCrossing).to perform_actionable(berth: 'B7').and_fail(:deck_full)
+  end
+
+
+  it 'passes the hold through' do
+    stub_actionable_success(HoldBerth, output: { ticket_no: 7 })
+
+
+    expect(BookCrossing.run(berth: 'B7').ticket_no).to eq(7)
+  end
+end
+```
+ Where the action declares failures, a stubbed failure takes the declared metadata, and the declared message when you pass none. Metadata you pass explicitly beats the declared one. A code the action didn’t declare raises the same `ArgumentError` as the matcher, with gem codes allowed. Skips work the same way, except the default `:skipped` gets no exemption: `allow_actionable_skip(action)` raises unless the action declares `:skipped` or declares no skips at all. What the stub returns as output depends on the action. Without typed outcomes you get exactly what you passed, so a Hash stays a Hash: `result.output[:id]` works and `result.id` doesn’t. With typed outcomes, and for any code that has an output schema, the output goes through the schema the way a real run would shape it. Output that breaks the schema raises `ArgumentError`, saying a real run would end as `invalid_output`, and so does output for a code with no schema. When a parent’s action step absorbs a stubbed child, only the fields you gave the stub come through (AC-B#stubshape, AC-B#stubparent). ## Outcome coverage [Section titled “Outcome coverage”](#outcome-coverage) 
+```ruby
+require 'actionable/rspec/coverage'
+```
+ After the require, each real `.run` of a named action is recorded as `[name, outcome, code]`, nested action steps and `run_each` items included, and a single `after(:suite)` hook prints the declared outcomes that no spec reached. Anonymous classes don’t count. A stub of `run` on the subclass sits in front of the recorder, so stubbed runs never count as real. The stub helpers log them separately, and the report shows them as `Stubbed only`. An action’s expected outcomes are `"success"`, `"failure:<code>"` per declared failure, `"skipped:<code>"` per declared skip, and whichever gem codes you configure. 
+```ruby
+require 'actionable/rspec/coverage'
+
+
+Actionable::Coverage.reset!
+Actionable::Coverage.expected_outcomes(ClearBerth) # => ["success", "failure:occupied", "skipped:already_free"]
+
+
+ClearBerth.run(berth: 'free')
+Actionable::Coverage.observed.to_a # => [["ClearBerth", :skipped, :already_free]]
+Actionable::Coverage.actions       # => [ClearBerth]
+
+
+report = Actionable::Coverage::Report.new
+report.to_baseline  # => {"ClearBerth" => ["success", "failure:occupied"]}
+report.totals       # => {actions: 1, expected: 3, reached: 1, missing: 2}
+report.passed?      # => true
+report.to_s.lines.first.chomp # => "Actionable outcome coverage"
+report.to_s.lines.last.chomp  # => "Actions: 1  Expected outcomes: 3  Reached: 1  Missing: 2"
+```
+ Gem codes only count once configured, and the setter turns down anything other than the gem’s two codes: 
+```ruby
+Actionable::Coverage.gem_codes = %i[invalid_input]
+Actionable::Coverage.expected_outcomes(ClearBerth).last # => "failure:invalid_input"
+Actionable::Coverage.gem_codes = []
+
+
+begin
+  Actionable::Coverage.gem_codes = %i[occupied]
+rescue ArgumentError => e
+  e.message # => "not a gem failure code: :occupied (the gem emits :invalid_input, :invalid_output)"
+end
+```
+ ### Settings [Section titled “Settings”](#settings) | Setting | Default | Meaning | | -------------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | | `root` | `Actionable::Action` | descendants of this class are reported | | `include_prefixes`, `exclude_prefixes` | `[]` | name prefixes (Strings) or Regexps; any include filter restricts to matches | | `loader` | none | a callable run before listing, such as an eager load | | `gem_codes` | `[]` | gem codes to expect: `:invalid_input` applies to a schema with a required field, `:invalid_output` when a schema a run is held to has one | | `only_observed` | `false` | drop actions with no real run, for a local partial run | | `baseline` | `nil` | path to the baseline file | | `new_gap_hint` | `DEFAULT_NEW_GAP_HINT` | the hint line in a baseline mismatch message | `Coverage.reset_config!` puts the defaults back. The recording side offers `observed`, `stubbed` (both return copies), `record`, `record_stub`, `reset!`, `enable!`, `disable!` and `enabled?`. A disabled recorder does nothing but stays installed. `Coverage.actions` walks `subclasses` instead of the registry, keeps classes with at least one step whose name still resolves to that class, and sorts them by name. ### Reports and baselines [Section titled “Reports and baselines”](#reports-and-baselines) `Coverage.report!(files: [], io: $stdout)` builds and prints the report. Then it either rewrites the baseline, when `ACTIONABLE_COVERAGE_UPDATE_BASELINE` is `true`, or raises `Coverage::BaselineMismatch` carrying `baseline_message` if the report doesn’t pass. The report is returned. Set `ACTIONABLE_COVERAGE_JSON` to a path and the JSON form is written there as well. A `Report` responds to `rows` (per action: `action`, `expected`, `reached`, `missing`, `stubbed_only`), `totals`, `new_gaps`, `stale`, `passed?`, `baseline_message`, `to_baseline`, `write_baseline(path)`, `to_h` and `to_json`. With no baseline, missing outcomes never fail the report. With a baseline (YAML for `.yml` or `.yaml`, otherwise JSON through Oj), a gap that isn’t listed is a `new_gap`, and an entry for an action that vanished or an outcome that is no longer a gap is `stale`. `passed?` wants both lists empty, so a fixed gap can’t mask a new one. A baseline path that doesn’t exist raises `Actionable::Error`. Parallel suites use `Coverage.write(path)`, which saves this process’s runs, and `Coverage.read(path)`, which loads them back as `{observed:, stubbed:}` sets. If `ACTIONABLE_COVERAGE_FILE` names a path, the suite hook writes a shard there and prints nothing, since a single shard can’t judge the whole suite. Give each process its own path and merge them with `Coverage.report!(files: 'tmp/coverage/*.json')`. Caution A baseline is only meaningful for a full run. Set it in CI, and use `only_observed` for a partial run on your machine. 
+```ruby
+Actionable::Coverage.baseline = 'spec/coverage_baseline.yml' # CI only
+Actionable::Coverage.only_observed = true                    # local partial run
+```
+ ## See also [Section titled “See also”](#see-also) * [Declared outcomes](/reference/actionable/declared-outcomes/): the codes that the matcher and coverage check against * [Results](/reference/actionable/results/): what the builders return * [Errors and guardrails](/reference/actionable/errors/): `BaselineMismatch` and the `ArgumentError` cases

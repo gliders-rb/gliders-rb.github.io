@@ -1,0 +1,21 @@
+# FieldStruct and Actionable
+
+> Documentation for field_struct (typed plain-Ruby objects with declared, coerced, validated fields) and actionable-rb (action objects with declared inputs, steps and outcomes), plus their adapters.
+
+- `field_struct` is a Ruby gem for typed plain Ruby objects: fields are declared, coerced and validated. Its RubyGems name is `field_struct`.
+- `actionable-rb` is a Ruby gem for action objects with declared inputs, steps and three outcomes (success, failure, error). Its RubyGems name is `actionable-rb`; you require it as `actionable`.
+- Adapters (JSON Schema, Avro, OpenTelemetry, Protobuf, tools) build on the two gems and are not released yet.
+- Every runnable Ruby example in these docs is executed in CI, so a `# => value` comment is a real result, not an illustration.
+
+## Documentation Sets
+
+- [Abridged documentation](https://gliders-rb.github.io/llms-small.txt): a compact version of the documentation for FieldStruct and Actionable, with non-essential content removed
+- [Complete documentation](https://gliders-rb.github.io/llms-full.txt): the full documentation for FieldStruct and Actionable
+- [field_struct reference](https://gliders-rb.github.io/_llms-txt/field_struct-reference.txt): Every public rule of field_struct.
+- [actionable reference](https://gliders-rb.github.io/_llms-txt/actionable-reference.txt): Every public rule of actionable-rb.
+- [Adapters](https://gliders-rb.github.io/_llms-txt/adapters.txt): Adapters, their introspection and how to build your own.
+
+## Notes
+
+- The complete documentation includes all content from the official documentation
+- The content is automatically generated from the same source as the official documentation
