@@ -1,0 +1,778 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-hero class="astro-g5ptsecz"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Gliders</title><link rel="canonical" href="https://gliders-rb.github.io/"/><link rel="sitemap" href="/sitemap-index.xml"/><link href="/brand/apple-touch-icon.png" rel="apple-touch-icon"/><link rel="shortcut icon" href="/brand/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.4.10"/><meta name="generator" content="Starlight v0.42.10"/><meta property="og:title" content="Gliders"/><meta property="og:type" content="article"/><meta property="og:url" content="https://gliders-rb.github.io/"/><meta property="og:locale" content="en"/><meta property="og:description" content="Two small Ruby gems, typed plain-Ruby objects and typed service objects built on them, with every example run in CI."/><meta property="og:site_name" content="Gliders"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="Two small Ruby gems, typed plain-Ruby objects and typed service objects built on them, with every example run in CI."/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/_astro/print.C9eyqPGL.css" media="print"><link rel="stylesheet" href="/_astro/common.DKZkO6Hq.css"><script type="module" src="/_astro/page.cNngjUgL.js"></script></head><body class="astro-g5ptsecz"><a class="sl-skip-link astro-qb7clj6f" href="#_top">Skip to content</a><div class="page sl-flex astro-yntsjkba"><header class="header astro-yntsjkba"><div class="header astro-by6fddyj"><div class="title-wrapper sl-flex astro-by6fddyj"><a href="/" class="site-title sl-flex astro-6rvad3va"><img class="light:sl-hidden print:hidden astro-6rvad3va" alt="Gliders" src="/_astro/gliders-mark-dark.CgvGl0FC.svg" width="128" height="128"><img class="dark:sl-hidden print:block astro-6rvad3va" alt="Gliders" src="/_astro/gliders-mark-light.D_nIgOFU.svg" width="128" height="128"><span class="astro-6rvad3va" translate="no">Gliders</span></a></div><div class="sl-flex print:hidden astro-by6fddyj"><site-search class="astro-by6fddyj astro-b5kgnn7o" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-b5kgnn7o"><svg aria-hidden="true" class="astro-b5kgnn7o astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-b5kgnn7o" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-b5kgnn7o" style="display: none"><kbd class="astro-b5kgnn7o">Ctrl</kbd><kbd class="astro-b5kgnn7o">K</kbd></kbd></button><dialog style="padding: 0" aria-label="Search" class="astro-b5kgnn7o"><div class="dialog-frame sl-flex astro-b5kgnn7o"><button data-close-modal class="sl-flex md:sl-hidden astro-b5kgnn7o">Cancel</button><div class="search-container astro-b5kgnn7o"><div id="starlight__search" class="astro-b5kgnn7o"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/_astro/Search.astro_astro_type_script_index_0_lang.CibB10mu.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-by6fddyj"><div class="sl-flex social-icons astro-by6fddyj"><a href="https://github.com/gliders-rb/gems" rel="me" class="sl-flex astro-n2mnl6yq"><span class="sr-only astro-n2mnl6yq">Gliders on GitHub</span><svg aria-hidden="true" class="astro-n2mnl6yq astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-2z5xp7gb"><span class="sr-only astro-2z5xp7gb">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-2z5xp7gb astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-2z5xp7gb"><option value="dark" class="astro-2z5xp7gb">Dark</option><option value="light" class="astro-2z5xp7gb">Light</option><option value="auto" selected class="astro-2z5xp7gb">Auto</option></select><svg aria-hidden="true" class="icon caret astro-2z5xp7gb astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><div class="main-frame astro-yntsjkba"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-lrzkfocr"><div class="main-pane astro-lrzkfocr"><main data-pagefind-body class="astro-g5ptsecz" lang="en" dir="ltr"><div class="content-panel astro-a7po4psb"><div class="sl-container astro-a7po4psb"><div class="hero af-hero"><style>/* Home page hero: the copy beside the code animation (src/components/Hero.astro). The animation's timeline
+   lives in src/generated/hero.css, written by bin/hero; this sheet is its static look. Every colour here is a
+   site token, so both schemes keep the contrast the theme sheet already checks. */
+
+/* ---- the hero layout (Starlight's own hero styles are scoped to its component, so they are restated) ---- */
+
+.af-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 2rem;
+  padding-block: 1rem 2rem;
+}
+
+.af-hero .stack {
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.af-hero .copy {
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.af-hero .copy > * {
+  max-width: 50ch;
+}
+
+.af-hero .tagline {
+  max-width: 44ch;
+  font-size: clamp(var(--sl-text-base), calc(0.0625rem + 1.6vw), var(--sl-text-lg));
+  color: var(--sl-color-gray-2);
+}
+
+.af-hero h1 {
+  font-size: clamp(var(--sl-text-3xl), calc(0.25rem + 5vw), var(--sl-text-6xl));
+  line-height: var(--sl-line-height-headings);
+  color: var(--sl-color-white);
+}
+
+/* The Gliders mark: small, inline, left of the word, as tall as the letters. */
+.af-hero-mark img {
+  width: 0.82em;
+  height: 0.82em;
+  margin-inline-end: 0.18em;
+  vertical-align: -0.06em;
+}
+
+/* B: one column of equal pills. */
+.af-hero .actions {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  width: min(100%, 21rem);
+}
+
+.af-hero .actions .sl-link-button {
+  justify-content: flex-start;
+  gap: 0.75rem;
+  min-height: 3rem;
+  margin: 0;
+  padding: 0.55rem 1.25rem;
+  border-radius: 999rem;
+  font-size: var(--sl-text-base);
+}
+
+.af-hero .actions .sl-link-button.primary {
+  justify-content: space-between;
+}
+
+.af-hero .actions .sl-link-button.minimal {
+  border: 1px solid var(--sl-color-gray-5);
+  color: var(--sl-color-white);
+}
+
+.af-hero .actions .sl-link-button.minimal:hover {
+  border-color: var(--sl-color-gray-3);
+  background: var(--sl-color-gray-7);
+}
+
+.af-hero .actions .sl-link-button.minimal > svg:last-child {
+  margin-inline-start: auto;
+  color: var(--sl-color-gray-3);
+}
+
+.af-hero .actions .af-gem-link {
+  padding-inline-start: 0.75rem;
+}
+
+.af-gem {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  color: var(--sl-color-white);
+}
+
+.af-gem .dot {
+  fill: var(--af-spark);
+}
+
+.af-hero-demo {
+  min-width: 0;
+}
+
+@media (min-width: 64rem) {
+  .af-hero {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: start;
+    gap: 3rem;
+    padding-block: clamp(2rem, calc(1rem + 5vmin), 3.5rem) 3rem;
+  }
+}
+
+/* ---- C: the idea band, contained, between rules ---- */
+
+/* The idea and the map side by side on wide screens: the callout on the left, the doc cards two by two on the right. */
+.af-idea {
+  margin-block: 1rem 0;
+  padding-block: 2.5rem;
+  border-block: 1px solid var(--sl-color-gray-6);
+  background: radial-gradient(60% 120% at 0% 50%, var(--af-glow), transparent 70%);
+}
+
+@media (min-width: 50rem) {
+  .af-idea {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2.5rem;
+    align-items: center;
+  }
+}
+
+.af-band {
+  margin: 0;
+  /* Clear of the band's left edge, so the amber rule doesn't sit on it. */
+  padding-inline-start: clamp(1rem, 3vw, 2.5rem);
+}
+
+.af-band p {
+  max-width: 34ch;
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  border-inline-start: 3px solid var(--af-spark);
+  font-family: var(--af-font-display);
+  font-weight: 500;
+  font-size: clamp(1.25rem, 0.9rem + 1.4vw, 1.75rem);
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  color: var(--sl-color-white);
+  text-wrap: balance;
+}
+
+.af-band .more {
+  display: inline-block;
+  color: var(--sl-color-text-accent);
+  margin-top: 1rem;
+  margin-inline-start: 1.5rem;
+  font-size: var(--sl-text-sm);
+}
+
+/* ---- G: what's in the docs ---- */
+
+.af-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
+  gap: 0.75rem;
+  margin-top: 2.5rem;
+}
+
+@media (min-width: 50rem) {
+  .af-map {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 0;
+  }
+
+  /* The tutorial, where a new reader starts, takes the whole first row; the other four sit two by two. */
+  .af-map a.lead {
+    grid-column: 1 / -1;
+  }
+}
+
+.af-map a {
+  position: relative;
+  display: block;
+  margin: 0;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+  color: var(--sl-color-gray-2);
+  font-size: var(--sl-text-sm);
+  line-height: 1.45;
+  text-decoration: none;
+}
+
+.af-map a:hover {
+  border-color: var(--sl-color-accent);
+  background: var(--sl-color-gray-7);
+}
+
+/* The arrow says "this is a link", as the tutorial button's does; it moves toward where the card goes on hover. */
+.af-map .text {
+  display: block;
+  padding-inline-end: 1.75rem;
+}
+
+.af-map .go {
+  position: absolute;
+  inset-inline-end: 1.1rem;
+  bottom: 0.9rem;
+  font-size: 1.4rem;
+  color: var(--sl-color-gray-3);
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.af-map a:hover .go,
+.af-map a:focus-visible .go,
+.af-map a.lead .go {
+  color: var(--sl-color-text-accent);
+}
+
+.af-map a:hover .go,
+.af-map a:focus-visible .go {
+  transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .af-map .go {
+    transition: none;
+  }
+}
+
+.af-map a.lead {
+  --af-lead-glow: radial-gradient(
+    80% 180% at 0% 0%,
+    color-mix(in srgb, var(--af-spark) 26%, transparent),
+    transparent 70%
+  );
+  border-color: var(--af-spark);
+  background: var(--af-lead-glow);
+}
+
+.af-map a.lead:hover {
+  background: var(--af-lead-glow), var(--sl-color-gray-7);
+}
+
+.af-map b {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-family: var(--af-font-display);
+  font-weight: 600;
+  font-size: var(--sl-text-lg);
+  color: var(--sl-color-white);
+}
+
+.af-map b span {
+  font-family: var(--af-font-body);
+  font-weight: 500;
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+  white-space: nowrap;
+}
+
+/* ---- the figure ---- */
+
+.hx {
+  position: relative;
+  margin: 0;
+  container-type: inline-size;
+  display: grid;
+  gap: 0.75rem;
+  font-family: var(--af-font-body);
+}
+
+.hx-window {
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: radial-gradient(70% 60% at 100% 0%, var(--af-glow), transparent 70%), var(--hx-bg);
+}
+
+:root[data-theme='light'] .hx-window {
+  background: var(--hx-bg);
+}
+
+.hx-pane + .hx-pane {
+  border-top: 1px solid var(--sl-color-gray-5);
+}
+
+.hx-bar {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 2.1rem;
+  padding: 0;
+  border-bottom: 1px solid var(--sl-color-gray-6);
+  background-image: repeating-linear-gradient(135deg, var(--af-hatch) 0 1px, transparent 1px 7px);
+  font-family: var(--af-font-code);
+  font-size: 0.75rem;
+  color: var(--sl-color-gray-3);
+}
+
+.hx-file {
+  display: flex;
+  align-items: center;
+  padding-inline: 0.9rem;
+  background: var(--hx-bg);
+  border-inline-end: 1px solid var(--sl-color-gray-6);
+  color: var(--sl-color-gray-2);
+}
+
+.hx code,
+.hx pre {
+  font-family: var(--af-font-code);
+  font-feature-settings: 'liga' 0, 'calt' 0;
+  font-variant-ligatures: none;
+}
+
+.hx-pre {
+  margin: 0;
+  padding: 0.6rem 0;
+  overflow-x: auto;
+  background: none;
+  border: 0;
+  font-size: clamp(0.6875rem, 0.45rem + 1.15cqi, 0.875rem);
+  line-height: 1.6;
+}
+
+.hx-pre > code {
+  display: block;
+  padding: 0;
+  background: none;
+  font-size: inherit;
+}
+
+.hx-line {
+  display: block;
+  position: relative;
+  padding-inline: 0.9rem;
+  white-space: pre;
+}
+
+.hx-src {
+  position: relative;
+}
+
+/* A marked line: a tint behind the code and a worded tag at its end (the word is the meaning, not the tint). */
+.hx-hl {
+  position: absolute;
+  inset: 0;
+  border-inline-start: 3px solid var(--hx-tone);
+  background: var(--hx-tone-bg);
+}
+
+.hx-tag {
+  position: absolute;
+  inset-inline-end: 0.6rem;
+  top: 50%;
+  translate: 0 -50%;
+  padding: 0 0.45rem;
+  border: 1px solid var(--hx-tone);
+  border-radius: 0.3rem;
+  background: var(--hx-tone-bg);
+  color: var(--hx-tone);
+  font-family: var(--af-font-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.hx .ok {
+  --hx-tone: var(--af-success);
+  --hx-tone-bg: var(--af-success-bg);
+}
+
+.hx .stop {
+  --hx-tone: var(--af-failure);
+  --hx-tone-bg: var(--af-failure-bg);
+}
+
+.hx .skip {
+  --hx-tone: var(--af-skipped);
+  --hx-tone-bg: var(--af-skipped-bg);
+}
+
+/* Too narrow for a tag beside the longest line: the tint and the caption carry the beat. */
+@container (max-width: 34rem) {
+  .hx-tag {
+    display: none;
+  }
+}
+
+/* ---- the calls and their results ---- */
+
+.hx-runs {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.7rem 0;
+  list-style: none;
+}
+
+.hx-runs > li + li {
+  margin-top: 0;
+}
+
+.hx-run {
+  position: relative;
+  padding-inline: 0.9rem;
+  font-size: clamp(0.6875rem, 0.45rem + 1.15cqi, 0.875rem);
+  line-height: 1.6;
+}
+
+.hx-active {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 3px;
+  background: var(--af-spark);
+}
+
+/* A call not yet played: dimmed, so the pane shows what is coming without claiming a result. */
+.hx-veil {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--hx-bg) 55%, transparent);
+  pointer-events: none;
+}
+
+.hx-call,
+.hx-value {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  overflow-wrap: anywhere;
+}
+
+.hx-call {
+  display: block;
+  white-space: pre-wrap;
+}
+
+.hx-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
+  margin: 0.15rem 0 0;
+}
+
+.hx-result .af-badge {
+  font-size: 0.75rem;
+}
+
+/* ---- captions ---- */
+
+/* Every caption shares one cell, so the box is as tall as the longest and nothing below it moves. */
+.hx-captions {
+  display: grid;
+  font-size: 0.9375rem;
+  color: var(--sl-color-gray-1);
+}
+
+.hx-cap {
+  grid-area: 1 / 1;
+}
+
+.hx-cap code {
+  padding: 0 0.2em;
+  font-size: 0.92em;
+}
+
+/* ---- the stepper: ‹ 1 2 3 4 5 › and play/pause, under the figure ---- */
+
+.hx-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.hx-steps[hidden],
+.hx-steps button[hidden] {
+  display: none;
+}
+
+.hx-numbers {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hx-numbers > li + li {
+  margin-top: 0;
+}
+
+.hx-steps button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 999rem;
+  background: transparent;
+  color: var(--sl-color-gray-2);
+  font: 600 0.8125rem/1 var(--af-font-body);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.hx-steps button:hover:not(:disabled) {
+  border-color: var(--sl-color-gray-3);
+  background: var(--sl-color-gray-7);
+  color: var(--sl-color-white);
+}
+
+.hx-steps button:focus-visible {
+  outline: 2px solid var(--sl-color-accent);
+  outline-offset: 2px;
+}
+
+.hx-steps button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.hx-steps .hx-step[aria-current='step'] {
+  border-color: var(--af-spark);
+  background: var(--af-spark);
+  color: #1a1206;
+}
+
+/* Light: the spark is too pale against the page to mark the current step (2.8:1), so it takes the deeper accent. */
+:root[data-theme='light'] .hx-steps .hx-step[aria-current='step'] {
+  border-color: var(--sl-color-accent);
+  background: var(--sl-color-accent);
+  color: #fff;
+}
+
+.hx-prev,
+.hx-next {
+  font-size: 1.1rem;
+}
+
+.hx-play {
+  margin-inline-start: auto;
+}
+
+/* Two bars while playing, a triangle while paused; the label says which. */
+.hx-icon {
+  width: 0.7rem;
+  height: 0.75rem;
+  background: linear-gradient(to right, currentColor 0 35%, transparent 35% 65%, currentColor 65%);
+}
+
+.hx-play[data-state='paused'] .hx-icon {
+  background: currentColor;
+  clip-path: polygon(10% 0, 100% 50%, 10% 100%);
+}
+
+.hx-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The two gem sections open the page body; give them room from the cards above and the section before. */
+.sl-heading-wrapper:has(> #fieldstruct-typed-poros),
+.sl-heading-wrapper:has(> #actionable-service-objects) {
+  margin-top: 4.5rem;
+}
+
+.af-license-line {
+  margin-top: 1rem;
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-3);
+}
+
+.af-license-line a {
+  color: var(--sl-color-text-accent);
+}
+/* Generated by bin/hero from src/hero/storyboard.md. Do not edit by hand. */
+.hx .hx-a1{opacity:0}
+.hx .hx-a2{opacity:0}
+.hx .hx-a4{opacity:0}
+.hx .hx-a5{opacity:0}
+.hx .hx-a6{opacity:0}
+.hx .hx-a7{opacity:0}
+.hx .hx-a8{opacity:0}
+.hx .hx-a10{opacity:0}
+.hx .hx-a12{opacity:0}
+.hx .hx-a13{opacity:0}
+.hx .hx-a14{opacity:0}
+.hx .hx-a15{opacity:0}
+.hx .hx-a16{opacity:0}
+.hx .hx-a18{opacity:0}
+.hx .hx-a20{opacity:0}
+.hx .hx-a21{opacity:0}
+.hx .hx-a22{opacity:0}
+.hx .hx-a23{opacity:0}
+.hx .hx-a24{opacity:0}
+.hx[data-step="1"] .hx-a1{opacity:1}
+.hx[data-step="1"] .hx-a4{opacity:1}
+.hx[data-step="1"] .hx-a9{opacity:0;translate:0 0.3rem}
+.hx[data-step="1"] .hx-a12{opacity:1}
+.hx[data-step="1"] .hx-a17{opacity:0;translate:0 0.3rem}
+.hx[data-step="1"] .hx-a20{opacity:1}
+.hx[data-step="1"] .hx-a25{opacity:0;translate:0 0.3rem}
+.hx[data-step="1"] .hx-a26{opacity:0}
+.hx[data-step="2"] .hx-a2{opacity:1}
+.hx[data-step="2"] .hx-a5{opacity:1}
+.hx[data-step="2"] .hx-a6{opacity:1}
+.hx[data-step="2"] .hx-a7{opacity:1}
+.hx[data-step="2"] .hx-a8{opacity:1}
+.hx[data-step="2"] .hx-a12{opacity:1}
+.hx[data-step="2"] .hx-a17{opacity:0;translate:0 0.3rem}
+.hx[data-step="2"] .hx-a20{opacity:1}
+.hx[data-step="2"] .hx-a25{opacity:0;translate:0 0.3rem}
+.hx[data-step="2"] .hx-a26{opacity:0}
+.hx[data-step="3"] .hx-a10{opacity:1}
+.hx[data-step="3"] .hx-a13{opacity:1}
+.hx[data-step="3"] .hx-a14{opacity:1}
+.hx[data-step="3"] .hx-a15{opacity:1}
+.hx[data-step="3"] .hx-a16{opacity:1}
+.hx[data-step="3"] .hx-a20{opacity:1}
+.hx[data-step="3"] .hx-a25{opacity:0;translate:0 0.3rem}
+.hx[data-step="3"] .hx-a26{opacity:0}
+.hx[data-step="4"] .hx-a18{opacity:1}
+.hx[data-step="4"] .hx-a21{opacity:1}
+.hx[data-step="4"] .hx-a22{opacity:1}
+.hx[data-step="4"] .hx-a23{opacity:1}
+.hx[data-step="4"] .hx-a24{opacity:1}
+.hx[data-step="4"] .hx-a26{opacity:0}
+@media (prefers-reduced-motion: no-preference){
+.hx[data-step] .hx-anim{transition:opacity 0.25s linear,translate 0.25s ease-out}
+.hx[data-step="1"] .hx-a2{transition:none}
+.hx[data-step="1"] .hx-a10{transition:none}
+.hx[data-step="1"] .hx-a18{transition:none}
+.hx[data-step="1"] .hx-a26{transition:none}
+.hx[data-step="2"] .hx-a1{transition:none}
+.hx[data-step="2"] .hx-a6{transition-delay:0.5s}
+.hx[data-step="2"] .hx-a7{transition-delay:0.9s}
+.hx[data-step="2"] .hx-a8{transition-delay:1.35s}
+.hx[data-step="2"] .hx-a9{transition-delay:1.85s}
+.hx[data-step="2"] .hx-a10{transition:none}
+.hx[data-step="2"] .hx-a18{transition:none}
+.hx[data-step="2"] .hx-a26{transition:none}
+.hx[data-step="3"] .hx-a1{transition:none}
+.hx[data-step="3"] .hx-a2{transition:none}
+.hx[data-step="3"] .hx-a14{transition-delay:0.9s}
+.hx[data-step="3"] .hx-a15{transition-delay:1.2s}
+.hx[data-step="3"] .hx-a16{transition-delay:1.35s}
+.hx[data-step="3"] .hx-a17{transition-delay:1.85s}
+.hx[data-step="3"] .hx-a18{transition:none}
+.hx[data-step="3"] .hx-a26{transition:none}
+.hx[data-step="4"] .hx-a1{transition:none}
+.hx[data-step="4"] .hx-a2{transition:none}
+.hx[data-step="4"] .hx-a10{transition:none}
+.hx[data-step="4"] .hx-a22{transition-delay:0.5s}
+.hx[data-step="4"] .hx-a23{transition-delay:0.9s}
+.hx[data-step="4"] .hx-a24{transition-delay:1.35s}
+.hx[data-step="4"] .hx-a25{transition-delay:1.85s}
+.hx[data-step="4"] .hx-a26{transition:none}
+.hx[data-step="5"] .hx-a1{transition:none}
+.hx[data-step="5"] .hx-a2{transition:none}
+.hx[data-step="5"] .hx-a10{transition:none}
+.hx[data-step="5"] .hx-a18{transition:none}
+}
+.hx .t0{color:#8fb0d6}
+:root[data-theme='light'] .hx .t0{color:#275078}
+.hx .t1{color:#ddd6ca}
+:root[data-theme='light'] .hx .t1{color:#1a1612}
+.hx .t2{color:#d8c3a0}
+:root[data-theme='light'] .hx .t2{color:#6a4510}
+.hx .t3{color:#c4a6cf}
+:root[data-theme='light'] .hx .t3{color:#5a4082}
+.hx .t4{color:#d4b483}
+:root[data-theme='light'] .hx .t4{color:#6a4510}
+.hx .t5{color:#a9c08f}
+:root[data-theme='light'] .hx .t5{color:#3c5425}
+.hx .t6{color:#cdbfae}
+:root[data-theme='light'] .hx .t6{color:#4a433b}
+:root{--hx-bg:#100e0c}
+:root[data-theme='light']{--hx-bg:#fdfcf9}
+</style><div class="sl-flex stack"><div class="sl-flex copy"><h1 id="_top" data-page-title><span class="af-hero-mark" aria-hidden="true"><img src="/_astro/gliders-mark-dark.CgvGl0FC_Z1C4Wjk.svg" alt loading="eager" decoding="async" width="64" height="64" class="light:sl-hidden"><img src="/_astro/gliders-mark-light.D_nIgOFU_Z1C4Wjk.svg" alt loading="eager" decoding="async" width="64" height="64" class="dark:sl-hidden"></span>Gliders<span class="af-hero-sub">FieldStruct and Actionable</span></h1><div class="tagline">Typed plain-Ruby objects (FieldStruct) and typed service objects built on them (Actionable), with adapters for JSON Schema, Avro, Protobuf, OpenTelemetry and LLM tools.</div></div><div class="sl-flex actions"><a class="sl-link-button not-content primary astro-dcqstdaq" href="/tutorial/trek-planner/">Start the tutorial<svg aria-hidden="true" class="astro-dcqstdaq astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg></a><a class="sl-link-button not-content minimal af-gem-link astro-dcqstdaq" href="https://github.com/gliders-rb/gems/tree/main/gems/field_struct"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" class="af-gem" aria-hidden="true"><path d="M56.86 24.4 A26 26 0 1 1 50.38 13.62" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="50.38" cy="13.62" r="4.6" class="dot"/><g transform="translate(32 32) scale(1.55) translate(-32 -32)"><path d="M22.5 38.5 V25.5 H30.5 M22.5 31.5 H28.7 M41.1 27.3 C39.9 25.3 34.3 25.3 34.1 28.7 C33.9 31.7 41.3 31.9 41.1 35.3 C40.9 38.8 34.9 38.8 33.8 36.7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
+field_struct on GitHub<svg aria-hidden="true" class="astro-dcqstdaq astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a><a class="sl-link-button not-content minimal af-gem-link astro-dcqstdaq" href="https://github.com/gliders-rb/gems/tree/main/gems/actionable"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" class="af-gem" aria-hidden="true"><path d="M56.86 24.4 A26 26 0 1 1 50.38 13.62" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="50.38" cy="13.62" r="4.6" class="dot"/><g transform="translate(32 32) scale(1.55) translate(-32 -32)"><path d="M22.5 38.5 L26.5 25.5 L30.5 38.5 M24.1 34.1 H28.9 M40.95 31.11 A4.5 4.5 0 1 0 40.95 36.89" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
+actionable on GitHub<svg aria-hidden="true" class="astro-dcqstdaq astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M19.33 10.18a1 1 0 0 1-.77 0 1 1 0 0 1-.62-.93l.01-1.83-8.2 8.2a1 1 0 0 1-1.41-1.42l8.2-8.2H14.7a1 1 0 0 1 0-2h4.25a1 1 0 0 1 1 1v4.25a1 1 0 0 1-.62.93Z"/><path d="M11 4a1 1 0 1 1 0 2H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Z"/></svg></a></div><p class="af-license-line">Open source under the <a href="https://github.com/gliders-rb/gems/blob/main/LICENSE">MIT license</a>: free to use, change and ship, commercial work included.</p></div><div class="af-hero-demo"><figure class="hx" data-hx data-steps="5" data-dwell="3,4,4,4">
+<div class="hx-window">
+<div class="hx-pane hx-code"><div class="hx-bar"><span class="hx-file">reserve_places.rb</span></div>
+<pre class="hx-pre"><code><span class="hx-line"><span class="hx-src"><span class="t0">class</span><span class="t1"> </span><span class="t2">ReservePlaces</span><span class="t1"> &lt; </span><span class="t2">Actionable::Action</span></span></span><span class="hx-line"><span class="hx-src"><span class="t1">  input </span><span class="t0">do</span></span></span><span class="hx-line"><span class="hx-hl hx-anim hx-a22 stop" aria-hidden="true"></span><span class="hx-src"><span class="t1">    required </span><span class="t3">:</span><span class="t4">hut_code</span><span class="t1">, </span><span class="t3">:</span><span class="t4">string</span></span><span class="hx-tag hx-anim hx-a22 stop" aria-hidden="true">is required</span></span><span class="hx-line"><span class="hx-hl hx-anim hx-a6 ok" aria-hidden="true"></span><span class="hx-src"><span class="t1">    required </span><span class="t3">:</span><span class="t4">places</span><span class="t1">, </span><span class="t3">:</span><span class="t4">integer</span></span><span class="hx-tag hx-anim hx-a6 ok" aria-hidden="true">'4' is 4</span></span><span class="hx-line"><span class="hx-src"><span class="t1">  </span><span class="t0">end</span></span></span><span class="hx-line"><span class="hx-src"><span class="t1">  fails </span><span class="t3">:</span><span class="t4">fully_booked</span><span class="t1">, </span><span class="t5">'not enough free places'</span></span></span><span class="hx-line"><span class="hx-src"> </span></span><span class="hx-line"><span class="hx-hl hx-anim hx-a7 ok" aria-hidden="true"></span><span class="hx-hl hx-anim hx-a14 stop" aria-hidden="true"></span><span class="hx-hl hx-anim hx-a23 skip" aria-hidden="true"></span><span class="hx-src"><span class="t1">  step </span><span class="t3">:</span><span class="t4">check_room</span></span><span class="hx-tag hx-anim hx-a7 ok" aria-hidden="true">ran</span><span class="hx-tag hx-anim hx-a14 stop" aria-hidden="true">stopped</span><span class="hx-tag hx-anim hx-a23 skip" aria-hidden="true">not run</span></span><span class="hx-line"><span class="hx-hl hx-anim hx-a8 ok" aria-hidden="true"></span><span class="hx-hl hx-anim hx-a16 skip" aria-hidden="true"></span><span class="hx-hl hx-anim hx-a24 skip" aria-hidden="true"></span><span class="hx-src"><span class="t1">  step </span><span class="t3">:</span><span class="t4">hold</span></span><span class="hx-tag hx-anim hx-a8 ok" aria-hidden="true">ran</span><span class="hx-tag hx-anim hx-a16 skip" aria-hidden="true">not run</span><span class="hx-tag hx-anim hx-a24 skip" aria-hidden="true">not run</span></span><span class="hx-line"><span class="hx-src"> </span></span><span class="hx-line"><span class="hx-src"><span class="t1">  </span><span class="t0">def</span><span class="t1"> </span><span class="t6">check_room</span></span></span><span class="hx-line"><span class="hx-hl hx-anim hx-a15 stop" aria-hidden="true"></span><span class="hx-src"><span class="t1">    </span><span class="t6">fail!(</span><span class="t3">:</span><span class="t4">fully_booked</span><span class="t6">)</span><span class="t1"> </span><span class="t0">if</span><span class="t1"> input.</span><span class="t6">places</span><span class="t1"> </span><span class="t0">&gt;</span><span class="t1"> </span><span class="t4">6</span></span><span class="hx-tag hx-anim hx-a15 stop" aria-hidden="true">fail!</span></span><span class="hx-line"><span class="hx-src"><span class="t1">  </span><span class="t0">end</span></span></span><span class="hx-line"><span class="hx-src"> </span></span><span class="hx-line"><span class="hx-src"><span class="t1">  </span><span class="t0">def</span><span class="t1"> </span><span class="t6">hold</span></span></span><span class="hx-line"><span class="hx-src"><span class="t1">    </span><span class="t6">succeed(</span><span class="t5">&quot;Holding </span><span class="t5">#{input.</span><span class="t6">places</span><span class="t5">}</span><span class="t5"> places&quot;</span><span class="t6">)</span></span></span><span class="hx-line"><span class="hx-src"><span class="t1">  </span><span class="t0">end</span></span></span><span class="hx-line"><span class="hx-src"><span class="t0">end</span></span></span></code></pre></div>
+<div class="hx-pane hx-calls"><div class="hx-bar"><span class="hx-file">calls.rb</span></div>
+<ol class="hx-runs">
+<li class="hx-run"><span class="hx-active hx-anim hx-a5" aria-hidden="true"></span><span class="hx-veil hx-anim hx-a4" aria-hidden="true"></span><code class="hx-call hx-anim hx-a3"><span class="t2">ReservePlaces</span><span class="t1">.</span><span class="t6">run</span><span class="t1">(</span><span class="t4">hut_code</span><span class="t3">:</span><span class="t1"> </span><span class="t5">'KR12'</span><span class="t1">, </span><span class="t4">places</span><span class="t3">:</span><span class="t1"> </span><span class="t5">'4'</span><span class="t1">)</span></code><p class="hx-result hx-anim hx-a9"><span class="af-badge success">success</span> <code class="hx-value"><span class="t5">&quot;Holding 4 places&quot;</span></code></p></li>
+<li class="hx-run"><span class="hx-active hx-anim hx-a13" aria-hidden="true"></span><span class="hx-veil hx-anim hx-a12" aria-hidden="true"></span><code class="hx-call hx-anim hx-a11"><span class="t2">ReservePlaces</span><span class="t1">.</span><span class="t6">run</span><span class="t1">(</span><span class="t4">hut_code</span><span class="t3">:</span><span class="t1"> </span><span class="t5">'KR12'</span><span class="t1">, </span><span class="t4">places</span><span class="t3">:</span><span class="t1"> </span><span class="t4">9</span><span class="t1">)</span></code><p class="hx-result hx-anim hx-a17"><span class="af-badge failure">failure</span> <code class="hx-value"><span class="t3">:</span><span class="t4">fully_booked</span></code></p></li>
+<li class="hx-run"><span class="hx-active hx-anim hx-a21" aria-hidden="true"></span><span class="hx-veil hx-anim hx-a20" aria-hidden="true"></span><code class="hx-call hx-anim hx-a19"><span class="t2">ReservePlaces</span><span class="t1">.</span><span class="t6">run</span><span class="t1">(</span><span class="t4">places</span><span class="t3">:</span><span class="t1"> </span><span class="t5">'2'</span><span class="t1">)</span></code><p class="hx-result hx-anim hx-a25"><span class="af-badge failure">failure</span> <code class="hx-value"><span class="t3">:</span><span class="t4">invalid_input</span></code> <code class="hx-value"><span class="t1">[</span><span class="t5">&quot;Hut code is required&quot;</span><span class="t1">]</span></code></p></li>
+</ol></div>
+</div>
+<div class="hx-steps" role="group" aria-label="Steps of the example" hidden><button type="button" class="hx-prev" aria-label="Previous step">‹</button><ol class="hx-numbers"><li><button type="button" class="hx-step" data-to="1" aria-label="Step 1 of 5">1</button></li><li><button type="button" class="hx-step" data-to="2" aria-label="Step 2 of 5">2</button></li><li><button type="button" class="hx-step" data-to="3" aria-label="Step 3 of 5">3</button></li><li><button type="button" class="hx-step" data-to="4" aria-label="Step 4 of 5">4</button></li><li><button type="button" class="hx-step" data-to="5" aria-label="Step 5 of 5">5</button></li></ol><button type="button" class="hx-next" aria-label="Next step">›</button><button type="button" class="hx-play" aria-label="Pause autoplay"><span class="hx-icon" aria-hidden="true"></span></button></div>
+<figcaption class="hx-captions"><span class="hx-cap hx-anim hx-a1" data-cap="1" aria-hidden="true">One action. Its input is a FieldStruct and each step is a plain method.</span><span class="hx-cap hx-anim hx-a2" data-cap="2" aria-hidden="true">The form sent the string '4'. The steps see the integer 4.</span><span class="hx-cap hx-anim hx-a10" data-cap="3" aria-hidden="true"><code>fail!</code> records the failure and stops, so <code>hold</code> never runs.</span><span class="hx-cap hx-anim hx-a18" data-cap="4" aria-hidden="true">Bad input is caught before the first step, with a message you can show.</span><span class="hx-cap hx-anim hx-a26 final" data-cap="5">Three calls, one result each. Every line here runs in CI.</span></figcaption>
+<p class="hx-live" aria-live="polite"></p>
+</figure>
+</div></div><div class="af-idea"><section class="af-band" aria-label="The Gliders idea"><p>A glider has no engine. It stays up on the air that is already there. These gems try to work the same way: with your data and your system, not against them.</p><a class="more" href="/explanation/gliders/">Why the name: the Gliders idea →</a></section><nav class="af-map" aria-label="What's in the docs"><a href="/tutorial/trek-planner/" class="lead"><b>Tutorial <span>7 parts</span></b><span class="text">Build a small trek planner, one gem at a time.</span><svg aria-hidden="true" class="go astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg></a><a href="/how-to/"><b>How-to guides <span>13 guides</span></b><span class="text">Recipes for one task each: Rails, jobs, RBS, testing.</span><svg aria-hidden="true" class="go astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg></a><a href="/reference/"><b>Reference <span>23 pages</span></b><span class="text">Every option, method and outcome, checked against the code.</span><svg aria-hidden="true" class="go astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg></a><a href="/explanation/"><b>Explanation <span>13 pages</span></b><span class="text">Why the gems are shaped the way they are.</span><svg aria-hidden="true" class="go astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg></a><a href="/adapters/"><b>Adapters <span>10 pages</span></b><span class="text">JSON Schema, Avro, Protobuf, OpenTelemetry, LLM tools, process pages.</span><svg aria-hidden="true" class="go astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg></a></nav></div><script type="module">var e=document.querySelector(`[data-hx]`),t=e?.querySelector(`.hx-steps`);if(e&&t){let n=Number(e.dataset.steps),r=(e.dataset.dwell??``).split(`,`).map(e=>Number(e)*1e3),i=t.querySelector(`.hx-prev`),a=t.querySelector(`.hx-next`),o=t.querySelector(`.hx-play`),s=[...t.querySelectorAll(`.hx-step`)],c=e.querySelector(`.hx-live`),l=matchMedia(`(prefers-reduced-motion: reduce)`),u=n,d=!l.matches,f=!1,p=!1,m=!1,h=0,g,_=(t,r=!1)=>{u=t,e.dataset.step=String(t),s.forEach((e,n)=>n+1===t?e.setAttribute(`aria-current`,`step`):e.removeAttribute(`aria-current`)),i.disabled=t===1,a.disabled=t===n,r&&c&&(c.textContent=e.querySelector(`[data-cap="${t}"]`)?.textContent??``)},v=()=>d&&!f&&p&&!document.hidden,y=()=>{let e=d&&!f;o.dataset.state=e?`playing`:`paused`,o.setAttribute(`aria-label`,e?`Pause autoplay`:`Play autoplay`)},b=()=>{clearTimeout(g),g=void 0},x=()=>{if(g=void 0,u<n)_(u+1);else if(++h>=3){d=!1,_(1),y();return}else _(1);S()},S=()=>{if(!v())return b();m||(m=!0,_(1)),g===void 0&&(g=window.setTimeout(x,u<n?r[u-1]:6e3))},C=e=>{d=!1,b(),y(),_(Math.min(n,Math.max(1,e)),!0)};i.addEventListener(`click`,()=>C(u-1)),a.addEventListener(`click`,()=>C(u+1)),s.forEach((e,t)=>e.addEventListener(`click`,()=>C(t+1))),t.addEventListener(`keydown`,e=>{let t={ArrowLeft:u-1,ArrowRight:u+1,Home:1,End:n}[e.key];t!==void 0&&(e.preventDefault(),C(t))}),o.addEventListener(`click`,()=>{d&&!f?(f=!0,b()):(d=!0,f=!1,h>=3&&(h=0),m=!0,u===n&&_(1)),y(),S()}),new IntersectionObserver(([e])=>{e.intersectionRatio>=.6?p=!0:e.intersectionRatio<.25&&(p=!1),S()},{threshold:[0,.25,.6,1]}).observe(e),document.addEventListener(`visibilitychange`,S),l.addEventListener(`change`,()=>{l.matches&&(d=!1,b(),o.hidden=!0)}),o.hidden=l.matches,t.hidden=!1,_(n),y()}</script><div class="sl-markdown-content"><div class="sl-heading-wrapper level-h2"><h2 id="fieldstruct-typed-poros">FieldStruct: typed POROs</h2><a class="sl-anchor-link" href="#fieldstruct-typed-poros"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “FieldStruct: typed POROs”</span></a></div>
+<p>Declare typed fields on a plain Ruby class and you get an object that coerces what it is given and knows whether it is valid. There is no database in the picture, and no Rails.</p>
+<div class="expressive-code"><link rel="stylesheet" href="/_astro/ec.a7urf.css"><script type="module" src="/_astro/ec.0vx5m.js"></script><figure class="frame has-title not-content"><figcaption class="header"><span class="title">hut.rb</span></figcaption><pre data-language="ruby"><code><div class="ec-line"><div class="code"><span style="--0:#8FB0D6;--1:#275078">class</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#D8C3A0;--1:#6A4510">Hut</span><span style="--0:#DDD6CA;--1:#1A1612"> &lt; </span><span style="--0:#D8C3A0;--1:#6A4510">FieldStruct::Base</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#DDD6CA;--1:#1A1612">  </span></span><span style="--0:#DDD6CA;--1:#1A1612">required </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">name</span><span style="--0:#DDD6CA;--1:#1A1612">, </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">string</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#DDD6CA;--1:#1A1612">  </span></span><span style="--0:#DDD6CA;--1:#1A1612">optional </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">places</span><span style="--0:#DDD6CA;--1:#1A1612">, </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">integer</span></div></div><div class="ec-line"><div class="code"><span style="--0:#8FB0D6;--1:#275078">end</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#DDD6CA;--1:#1A1612">hut </span><span style="--0:#8FB0D6;--1:#275078">=</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#D8C3A0;--1:#6A4510">Hut</span><span style="--0:#DDD6CA;--1:#1A1612">.</span><span style="--0:#8FB0D6;--1:#275078">new</span><span style="--0:#DDD6CA;--1:#1A1612">(</span><span style="--0:#D4B483;--1:#6A4510">name</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#A9C08F;--1:#3C5425">'Larch Col'</span><span style="--0:#DDD6CA;--1:#1A1612">, </span><span style="--0:#D4B483;--1:#6A4510">places</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#A9C08F;--1:#3C5425">'24'</span><span style="--0:#DDD6CA;--1:#1A1612">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#DDD6CA;--1:#1A1612">hut.</span><span style="--0:#CDBFAE;--1:#4A433B">places</span><span style="--0:#DDD6CA;--1:#1A1612">                          </span><span style="--0:#91887C;--0fs:italic;--1:#534D44;--1fs:italic" class="af-result"># =&gt; 24</span></div></div><div class="ec-line"><div class="code"><span style="--0:#DDD6CA;--1:#1A1612">hut.</span><span style="--0:#CDBFAE;--1:#4A433B">valid?</span><span style="--0:#DDD6CA;--1:#1A1612">                          </span><span style="--0:#91887C;--0fs:italic;--1:#534D44;--1fs:italic" class="af-result"># =&gt; true</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#DDD6CA;--1:#1A1612">unnamed </span><span style="--0:#8FB0D6;--1:#275078">=</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#D8C3A0;--1:#6A4510">Hut</span><span style="--0:#DDD6CA;--1:#1A1612">.</span><span style="--0:#8FB0D6;--1:#275078">new</span><span style="--0:#DDD6CA;--1:#1A1612">(</span><span style="--0:#D4B483;--1:#6A4510">name</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#A9C08F;--1:#3C5425">'  '</span><span style="--0:#DDD6CA;--1:#1A1612">)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#DDD6CA;--1:#1A1612">unnamed.</span><span style="--0:#CDBFAE;--1:#4A433B">errors</span><span style="--0:#DDD6CA;--1:#1A1612">.</span><span style="--0:#CDBFAE;--1:#4A433B">full_messages</span><span style="--0:#DDD6CA;--1:#1A1612">        </span><span style="--0:#91887C;--0fs:italic;--1:#534D44;--1fs:italic" class="af-result"># =&gt; ["Name is required"]</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="class Hut < FieldStruct::Base  required :name, :string  optional :places, :integerendhut = Hut.new(name: &#x27;Larch Col&#x27;, places: &#x27;24&#x27;)hut.places                          # => 24hut.valid?                          # => trueunnamed = Hut.new(name: &#x27;  &#x27;)unnamed.errors.full_messages        # => [&quot;Name is required&quot;]"><div></div></button></div></figure></div>
+<p>The places count came in as a string and is an integer now. A blank name didn’t raise. It was recorded, and the message is waiting when you ask for it.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="actionable-service-objects">Actionable: service objects</h2><a class="sl-anchor-link" href="#actionable-service-objects"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Actionable: service objects”</span></a></div>
+<p>An action is a handful of plain methods, one per step, and every run ends in exactly one result: success, failure or skip. The input is a FieldStruct, so a step never sees bad input.</p>
+<p>Above, the hero shows a success and two failures. The third outcome is a skip: the action had nothing to do, which is neither an error nor a success. A pottery studio’s kiln makes one.</p>
+<div class="expressive-code"><figure class="frame has-title not-content"><figcaption class="header"><span class="title">start_firing.rb</span></figcaption><pre data-language="ruby"><code><div class="ec-line"><div class="code"><span style="--0:#8FB0D6;--1:#275078">class</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#D8C3A0;--1:#6A4510">StartFiring</span><span style="--0:#DDD6CA;--1:#1A1612"> &lt; </span><span style="--0:#D8C3A0;--1:#6A4510">Actionable::Action</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#DDD6CA;--1:#1A1612">  </span></span><span style="--0:#DDD6CA;--1:#1A1612">input </span><span style="--0:#8FB0D6;--1:#275078">do</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#DDD6CA;--1:#1A1612">    </span></span><span style="--0:#DDD6CA;--1:#1A1612">required </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">kiln</span><span style="--0:#DDD6CA;--1:#1A1612">, </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">string</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#DDD6CA;--1:#1A1612">    </span></span><span style="--0:#DDD6CA;--1:#1A1612">required </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">pieces</span><span style="--0:#DDD6CA;--1:#1A1612">, </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">integer</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#8FB0D6;--1:#275078">end</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#DDD6CA;--1:#1A1612">  </span></span><span style="--0:#DDD6CA;--1:#1A1612">skips </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">nothing_to_fire</span><span style="--0:#DDD6CA;--1:#1A1612">, </span><span style="--0:#A9C08F;--1:#3C5425">'the kiln is empty'</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#DDD6CA;--1:#1A1612">  </span></span><span style="--0:#DDD6CA;--1:#1A1612">fails </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">overloaded</span><span style="--0:#DDD6CA;--1:#1A1612">, </span><span style="--0:#A9C08F;--1:#3C5425">'a kiln holds 30 pieces'</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#DDD6CA;--1:#1A1612">  </span></span><span style="--0:#DDD6CA;--1:#1A1612">step </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">check_load</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#DDD6CA;--1:#1A1612">  </span></span><span style="--0:#DDD6CA;--1:#1A1612">step </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">fire</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#8FB0D6;--1:#275078">private</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#8FB0D6;--1:#275078">def</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#CDBFAE;--1:#4A433B">check_load</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#CDBFAE;--1:#4A433B">skip!(</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">nothing_to_fire</span><span style="--0:#CDBFAE;--1:#4A433B">)</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#8FB0D6;--1:#275078">if</span><span style="--0:#DDD6CA;--1:#1A1612"> input.</span><span style="--0:#CDBFAE;--1:#4A433B">pieces</span><span style="--0:#DDD6CA;--1:#1A1612">.</span><span style="--0:#CDBFAE;--1:#4A433B">zero?</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#CDBFAE;--1:#4A433B">fail!(</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">overloaded</span><span style="--0:#CDBFAE;--1:#4A433B">)</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#8FB0D6;--1:#275078">if</span><span style="--0:#DDD6CA;--1:#1A1612"> input.</span><span style="--0:#CDBFAE;--1:#4A433B">pieces</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#8FB0D6;--1:#275078">&gt;</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#D4B483;--1:#6A4510">30</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#8FB0D6;--1:#275078">end</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#8FB0D6;--1:#275078">def</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#CDBFAE;--1:#4A433B">fire</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#CDBFAE;--1:#4A433B">succeed(</span><span style="--0:#A9C08F;--1:#3C5425">"Firing </span><span style="--0:#A9C08F;--1:#3C5425">#{input.</span><span style="--0:#CDBFAE;--1:#4A433B">pieces</span><span style="--0:#A9C08F;--1:#3C5425">}</span><span style="--0:#A9C08F;--1:#3C5425"> pieces in </span><span style="--0:#A9C08F;--1:#3C5425">#{input.</span><span style="--0:#CDBFAE;--1:#4A433B">kiln</span><span style="--0:#A9C08F;--1:#3C5425">}</span><span style="--0:#A9C08F;--1:#3C5425">"</span><span style="--0:#CDBFAE;--1:#4A433B">)</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#8FB0D6;--1:#275078">end</span></div></div><div class="ec-line"><div class="code"><span style="--0:#8FB0D6;--1:#275078">end</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#D8C3A0;--1:#6A4510">StartFiring</span><span style="--0:#DDD6CA;--1:#1A1612">.</span><span style="--0:#CDBFAE;--1:#4A433B">run</span><span style="--0:#DDD6CA;--1:#1A1612">(</span><span style="--0:#D4B483;--1:#6A4510">kiln</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#A9C08F;--1:#3C5425">'K2'</span><span style="--0:#DDD6CA;--1:#1A1612">, </span><span style="--0:#D4B483;--1:#6A4510">pieces</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#D4B483;--1:#6A4510">0</span><span style="--0:#DDD6CA;--1:#1A1612">).</span><span style="--0:#CDBFAE;--1:#4A433B">status</span><span style="--0:#DDD6CA;--1:#1A1612">   </span><span style="--0:#91887C;--0fs:italic;--1:#534D44;--1fs:italic" class="af-result"># =&gt; :skipped</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="class StartFiring < Actionable::Action  input do    required :kiln, :string    required :pieces, :integer  end  skips :nothing_to_fire, &#x27;the kiln is empty&#x27;  fails :overloaded, &#x27;a kiln holds 30 pieces&#x27;  step :check_load  step :fire  private  def check_load    skip!(:nothing_to_fire) if input.pieces.zero?    fail!(:overloaded) if input.pieces > 30  end  def fire    succeed(&quot;Firing #{input.pieces} pieces in #{input.kiln}&quot;)  endendStartFiring.run(kiln: &#x27;K2&#x27;, pieces: 0).status   # => :skipped"><div></div></button></div></figure></div>
+<p>Each result is a <code dir="auto">Success</code>, a <code dir="auto">Failure</code> or a <code dir="auto">Skipped</code>, and each is a FieldStruct, so <code dir="auto">case ... in</code> can branch on its class and its code in one line.</p>
+<div class="expressive-code"><figure class="frame has-title not-content"><figcaption class="header"><span class="title">studio.rb</span></figcaption><pre data-language="ruby"><code><div class="ec-line"><div class="code"><span style="--0:#8FB0D6;--1:#275078">def</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#CDBFAE;--1:#4A433B">notice</span><span style="--0:#DDD6CA;--1:#1A1612">(result)</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#8FB0D6;--1:#275078">case</span><span style="--0:#DDD6CA;--1:#1A1612"> result</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#8FB0D6;--1:#275078">in</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#D8C3A0;--1:#6A4510">Actionable</span><span style="--0:#DDD6CA;--1:#1A1612">::</span><span style="--0:#D8C3A0;--1:#6A4510">Success</span><span style="--0:#DDD6CA;--1:#1A1612">(</span><span style="--0:#D4B483;--1:#6A4510">message</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#DDD6CA;--1:#1A1612">) </span><span style="--0:#8FB0D6;--1:#275078">then</span><span style="--0:#DDD6CA;--1:#1A1612"> message</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#8FB0D6;--1:#275078">in</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#D8C3A0;--1:#6A4510">Actionable</span><span style="--0:#DDD6CA;--1:#1A1612">::</span><span style="--0:#D8C3A0;--1:#6A4510">Skipped</span><span style="--0:#DDD6CA;--1:#1A1612">(</span><span style="--0:#D4B483;--1:#6A4510">code</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">nothing_to_fire</span><span style="--0:#DDD6CA;--1:#1A1612">) </span><span style="--0:#8FB0D6;--1:#275078">then</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#A9C08F;--1:#3C5425">'Nothing in the kiln today'</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#8FB0D6;--1:#275078">in</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#D8C3A0;--1:#6A4510">Actionable</span><span style="--0:#DDD6CA;--1:#1A1612">::</span><span style="--0:#D8C3A0;--1:#6A4510">Failure</span><span style="--0:#DDD6CA;--1:#1A1612">(</span><span style="--0:#D4B483;--1:#6A4510">code</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">overloaded</span><span style="--0:#DDD6CA;--1:#1A1612">) </span><span style="--0:#8FB0D6;--1:#275078">then</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#A9C08F;--1:#3C5425">'Split the load across two firings'</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#8FB0D6;--1:#275078">in</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#D8C3A0;--1:#6A4510">Actionable</span><span style="--0:#DDD6CA;--1:#1A1612">::</span><span style="--0:#D8C3A0;--1:#6A4510">Failure</span><span style="--0:#DDD6CA;--1:#1A1612">(</span><span style="--0:#D4B483;--1:#6A4510">code</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#D4B483;--1:#6A4510">invalid_input</span><span style="--0:#DDD6CA;--1:#1A1612">) </span><span style="--0:#8FB0D6;--1:#275078">then</span><span style="--0:#DDD6CA;--1:#1A1612"> </span><span style="--0:#A9C08F;--1:#3C5425">"Check the form: </span><span style="--0:#A9C08F;--1:#3C5425">#{result.</span><span style="--0:#CDBFAE;--1:#4A433B">errors</span><span style="--0:#A9C08F;--1:#3C5425">.</span><span style="--0:#CDBFAE;--1:#4A433B">full_messages</span><span style="--0:#A9C08F;--1:#3C5425">.</span><span style="--0:#CDBFAE;--1:#4A433B">join</span><span style="--0:#A9C08F;--1:#3C5425">(</span><span style="--0:#A9C08F;--1:#3C5425">', '</span><span style="--0:#A9C08F;--1:#3C5425">)}</span><span style="--0:#A9C08F;--1:#3C5425">"</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#8FB0D6;--1:#275078">end</span></div></div><div class="ec-line"><div class="code"><span style="--0:#8FB0D6;--1:#275078">end</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#CDBFAE;--1:#4A433B">notice(</span><span style="--0:#D8C3A0;--1:#6A4510">StartFiring</span><span style="--0:#CDBFAE;--1:#4A433B">.run(</span><span style="--0:#D4B483;--1:#6A4510">kiln</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#CDBFAE;--1:#4A433B"> </span><span style="--0:#A9C08F;--1:#3C5425">'K2'</span><span style="--0:#CDBFAE;--1:#4A433B">, </span><span style="--0:#D4B483;--1:#6A4510">pieces</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#CDBFAE;--1:#4A433B"> </span><span style="--0:#A9C08F;--1:#3C5425">'12'</span><span style="--0:#CDBFAE;--1:#4A433B">)</span><span style="--0:#DDD6CA;--1:#1A1612">)   </span><span style="--0:#91887C;--0fs:italic;--1:#534D44;--1fs:italic" class="af-result"># =&gt; "Firing 12 pieces in K2"</span></div></div><div class="ec-line"><div class="code"><span style="--0:#CDBFAE;--1:#4A433B">notice(</span><span style="--0:#D8C3A0;--1:#6A4510">StartFiring</span><span style="--0:#CDBFAE;--1:#4A433B">.run(</span><span style="--0:#D4B483;--1:#6A4510">kiln</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#CDBFAE;--1:#4A433B"> </span><span style="--0:#A9C08F;--1:#3C5425">'K2'</span><span style="--0:#CDBFAE;--1:#4A433B">, </span><span style="--0:#D4B483;--1:#6A4510">pieces</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#CDBFAE;--1:#4A433B"> </span><span style="--0:#D4B483;--1:#6A4510">0</span><span style="--0:#CDBFAE;--1:#4A433B">)</span><span style="--0:#DDD6CA;--1:#1A1612">)      </span><span style="--0:#91887C;--0fs:italic;--1:#534D44;--1fs:italic" class="af-result"># =&gt; "Nothing in the kiln today"</span></div></div><div class="ec-line"><div class="code"><span style="--0:#CDBFAE;--1:#4A433B">notice(</span><span style="--0:#D8C3A0;--1:#6A4510">StartFiring</span><span style="--0:#CDBFAE;--1:#4A433B">.run(</span><span style="--0:#D4B483;--1:#6A4510">kiln</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#CDBFAE;--1:#4A433B"> </span><span style="--0:#A9C08F;--1:#3C5425">'K2'</span><span style="--0:#CDBFAE;--1:#4A433B">, </span><span style="--0:#D4B483;--1:#6A4510">pieces</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#CDBFAE;--1:#4A433B"> </span><span style="--0:#D4B483;--1:#6A4510">45</span><span style="--0:#CDBFAE;--1:#4A433B">)</span><span style="--0:#DDD6CA;--1:#1A1612">)     </span><span style="--0:#91887C;--0fs:italic;--1:#534D44;--1fs:italic" class="af-result"># =&gt; "Split the load across two firings"</span></div></div><div class="ec-line"><div class="code"><span style="--0:#CDBFAE;--1:#4A433B">notice(</span><span style="--0:#D8C3A0;--1:#6A4510">StartFiring</span><span style="--0:#CDBFAE;--1:#4A433B">.run(</span><span style="--0:#D4B483;--1:#6A4510">pieces</span><span style="--0:#C4A6CF;--1:#5A4082">:</span><span style="--0:#CDBFAE;--1:#4A433B"> </span><span style="--0:#D4B483;--1:#6A4510">3</span><span style="--0:#CDBFAE;--1:#4A433B">)</span><span style="--0:#DDD6CA;--1:#1A1612">)                  </span><span style="--0:#91887C;--0fs:italic;--1:#534D44;--1fs:italic" class="af-result"># =&gt; "Check the form: Kiln is required"</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="def notice(result)  case result  in Actionable::Success(message:) then message  in Actionable::Skipped(code: :nothing_to_fire) then &#x27;Nothing in the kiln today&#x27;  in Actionable::Failure(code: :overloaded) then &#x27;Split the load across two firings&#x27;  in Actionable::Failure(code: :invalid_input) then &quot;Check the form: #{result.errors.full_messages.join(&#x27;, &#x27;)}&quot;  endendnotice(StartFiring.run(kiln: &#x27;K2&#x27;, pieces: &#x27;12&#x27;))   # => &quot;Firing 12 pieces in K2&quot;notice(StartFiring.run(kiln: &#x27;K2&#x27;, pieces: 0))      # => &quot;Nothing in the kiln today&quot;notice(StartFiring.run(kiln: &#x27;K2&#x27;, pieces: 45))     # => &quot;Split the load across two firings&quot;notice(StartFiring.run(pieces: 3))                  # => &quot;Check the form: Kiln is required&quot;"><div></div></button></div></figure></div>
+<p>A skip stops the run like <code dir="auto">fail!</code> does, so <code dir="auto">fire</code> never runs for an empty kiln. Every declared code is plain data, so the branches read like the declarations.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="install">Install</h2><a class="sl-anchor-link" href="#install"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Install”</span></a></div>
+<p>Both gems go in your Gemfile. They are pre-releases for now, so the constraint names the pre-release version.</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="ruby"><code><div class="ec-line"><div class="code"><span style="--0:#DDD6CA;--1:#1A1612">gem </span><span style="--0:#A9C08F;--1:#3C5425">'field_struct'</span><span style="--0:#DDD6CA;--1:#1A1612">, </span><span style="--0:#A9C08F;--1:#3C5425">'~&gt; 1.0.0.pre1'</span></div></div><div class="ec-line"><div class="code"><span style="--0:#DDD6CA;--1:#1A1612">gem </span><span style="--0:#A9C08F;--1:#3C5425">'actionable-rb'</span><span style="--0:#DDD6CA;--1:#1A1612">, </span><span style="--0:#A9C08F;--1:#3C5425">'~&gt; 2.0.0.pre1'</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="gem &#x27;field_struct&#x27;, &#x27;~> 1.0.0.pre1&#x27;gem &#x27;actionable-rb&#x27;, &#x27;~> 2.0.0.pre1&#x27;"><div></div></button></div></figure></div>
+<p>The second gem is <code dir="auto">actionable-rb</code> because another project owns the short name, but you still <code dir="auto">require 'actionable'</code>. Both need Ruby 3.3 or newer. This site documents field_struct 1.0.0.pre1 and actionable-rb 2.0.0.pre1, and CI executes every runnable example on it, the two above included, against those versions. A wrong <code dir="auto"># =&gt;</code> comment fails the build.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="adapters">Adapters</h2><a class="sl-anchor-link" href="#adapters"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Adapters”</span></a></div>
+<p>A set of optional gems reads the same field metadata and writes other formats: JSON Schema, Avro, OpenTelemetry, Protobuf, plus actions exposed as LLM and MCP tools, and process pages for actions (Markdown with a Mermaid flowchart). Each is a prerelease, like the two gems. Start at the <a href="/adapters/">adapters overview</a>, or jump to <a href="/adapters/build-your-own/">building your own adapter</a>.</p></div><footer class="sl-flex astro-ddtxxk7k"><div class="meta sl-flex astro-ddtxxk7k"></div><div class="pagination-links print:hidden astro-b5raizh3" dir="ltr"></div></footer><p class="af-license-note astro-jo6i4kqk">FieldStruct, Actionable and their adapters are open source under the <a href="https://github.com/gliders-rb/gems/blob/main/LICENSE" class="astro-jo6i4kqk">MIT license</a>.</p></div></div></main></div></div></div></div></body></html>
